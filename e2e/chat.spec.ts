@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
-import { signUpNewUser } from "./helpers/auth";
+import { createAndLoginTestUser } from "./helpers/auth";
 
 const SAMPLE_PDF = resolve(__dirname, "fixtures", "sample.pdf");
 
@@ -11,7 +11,7 @@ test.describe("chat", () => {
   test("ask a question about an uploaded PDF and get a streamed answer with a citation", async ({ page }) => {
     test.setTimeout(180_000); // LLM round-trip can take a while end-to-end
 
-    await signUpNewUser(page, "chat");
+    await createAndLoginTestUser(page, "chat");
 
     // Create a project and upload the sample PDF
     await page.goto("/projects");

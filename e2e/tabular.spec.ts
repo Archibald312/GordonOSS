@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
-import { signUpNewUser } from "./helpers/auth";
+import { createAndLoginTestUser } from "./helpers/auth";
 
 const SAMPLE_PDF = resolve(__dirname, "fixtures", "sample.pdf");
 
@@ -12,7 +12,7 @@ test.describe("tabular review", () => {
   }) => {
     test.setTimeout(240_000); // Extraction across 2 columns × 1 row × 1 LLM call/cell
 
-    await signUpNewUser(page, "tab");
+    await createAndLoginTestUser(page, "tab");
 
     // Land on tabular reviews root and create a new one.
     await page.goto("/tabular-reviews");

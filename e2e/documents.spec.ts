@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
-import { signUpNewUser } from "./helpers/auth";
+import { createAndLoginTestUser } from "./helpers/auth";
 
 const SAMPLE_PDF = resolve(__dirname, "fixtures", "sample.pdf");
 
@@ -16,7 +16,7 @@ async function createProject(page: import("@playwright/test").Page, name: string
 
 test.describe("documents", () => {
   test.beforeEach(async ({ page }) => {
-    await signUpNewUser(page, "docs");
+    await createAndLoginTestUser(page, "docs");
     await createProject(page, `Docs Project ${Date.now()}`);
   });
 

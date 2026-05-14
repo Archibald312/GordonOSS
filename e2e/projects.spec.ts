@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { signUpNewUser } from "./helpers/auth";
+import { createAndLoginTestUser } from "./helpers/auth";
 import { uniqueTestEmail } from "./helpers/test-users";
 
 test.describe("projects", () => {
   test.beforeEach(async ({ page }) => {
-    await signUpNewUser(page, "proj");
+    await createAndLoginTestUser(page, "proj");
   });
 
   test("create a project from the projects page", async ({ page }) => {
