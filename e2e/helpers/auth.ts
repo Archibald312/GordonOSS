@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 import { DEFAULT_TEST_PASSWORD, uniqueTestEmail } from "./test-users";
 
 export interface TestUser {
@@ -46,46 +47,41 @@ async function createConfirmedUserViaAdmin(email: string, password: string): Pro
 }
 
 /**
- * Hits Supabase's password-grant endpoint and returns a full session
- * payload that mirrors what the JS client stores in localStorage.
+ * Signs in the freshly-created user using the real @supabase/supabase-js
+ * client and returns the canonical session payload that the frontend's
+ * own client stores in localStorage.  Using the JS client (instead of
+ * hand-rolling a fetch to /auth/v1/token) guarantees the session shape
+ * matches what the frontend expects on read — no risk of a future
+ * supabase-js bump silently changing the storage envelope.
  */
-async function fetchSessionViaPasswordGrant(
-  email: string,
-  password: string,
-): Promise<Record<string, unknown>> {
+async function signInViaSupabaseClient(email: string, password: string) {
   const url = process.env.TEST_SUPABASE_URL ?? process.env.SUPABASE_URL;
   const anonKey =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
     throw new Error(
-      "fetchSessionViaPasswordGrant: TEST_SUPABASE_URL and an anon/publishable key must be set",
+      "signInViaSupabaseClient: TEST_SUPABASE_URL and an anon/publishable key must be set",
     );
   }
-
-  const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-    method: "POST",
-    headers: {
-      apikey: anonKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, password }),
+  // persistSession:false keeps this Node client from trying to write to
+  // a non-existent localStorage; we only want the session object back.
+  const client = createClient(url, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
   });
-
-  if (!res.ok) {
-    throw new Error(
-      `Supabase password grant failed: ${res.status} ${await res.text()}`,
-    );
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if (error || !data.session) {
+    throw new Error(`signInWithPassword failed: ${error?.message ?? "no session"}`);
   }
-  return (await res.json()) as Record<string, unknown>;
+  return data.session;
 }
 
 /**
- * Creates a confirmed user via the admin API, fetches a real session from
- * Supabase via the password grant, then injects that session into the
- * browser's localStorage *before any navigation*.  When we then visit
- * /assistant, AuthContext reads the session synchronously on first render
- * and the route stays put — no UI login, no race with onAuthStateChange.
+ * Creates a confirmed user via the admin API, signs them in via the
+ * Supabase JS client (server-side, no UI), and seeds the browser's
+ * localStorage with the resulting session *before any navigation*.
+ * When we then visit /assistant, AuthContext reads the session on
+ * first render and the auth guard never bounces.
  *
  * This is the helper that 99 % of tests want.  Only the dedicated
  * "log-in via the UI" test in auth.spec.ts uses the real form flow.
@@ -100,9 +96,9 @@ export async function createAndLoginTestUser(
     name: `Test ${prefix}`,
   };
   await createConfirmedUserViaAdmin(user.email, user.password);
-  const session = await fetchSessionViaPasswordGrant(user.email, user.password);
+  const session = await signInViaSupabaseClient(user.email, user.password);
 
-  // Supabase stores sessions under `sb-<projectRef>-auth-token`.
+  // Supabase JS stores sessions under `sb-<projectRef>-auth-token`.
   const url = process.env.TEST_SUPABASE_URL ?? process.env.SUPABASE_URL!;
   const projectRef = new URL(url).hostname.split(".")[0];
   const storageKey = `sb-${projectRef}-auth-token`;
