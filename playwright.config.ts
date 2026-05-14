@@ -36,6 +36,9 @@ const requiredVars = [
   "SUPABASE_SECRET_KEY",
   "NEXT_PUBLIC_SUPABASE_URL",
   "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  // Supabase renamed the anon key in newer projects — the frontend reads
+  // this name.  Set it to the same value as NEXT_PUBLIC_SUPABASE_ANON_KEY.
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY",
   "GEMINI_API_KEY",
 ];
 const missing = requiredVars.filter(
@@ -78,11 +81,15 @@ export default defineConfig({
 
   webServer: [
     {
-      command: "npm run dev",
+      // In CI: serve the pre-built output with `next start` (boots in ~2s,
+      // no cold-compile during tests).  The CI workflow runs `next build`
+      // before Playwright so the .next/ directory is already present.
+      // Locally: use `next dev` for hot-reload convenience.
+      command: process.env.CI ? "npm start" : "npm run dev",
       cwd: "./frontend",
       port: FRONTEND_PORT,
       reuseExistingServer: !process.env.CI,
-      timeout: 180_000,
+      timeout: process.env.CI ? 30_000 : 180_000,
       stdout: "ignore",
       stderr: "pipe",
       // Inject TEST_ENV so the frontend's NEXT_PUBLIC_SUPABASE_* point at the

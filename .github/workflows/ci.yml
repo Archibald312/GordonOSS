@@ -117,7 +117,7 @@ jobs:
   test-e2e:
     name: E2E tests (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       CI: "true"
     steps:
@@ -185,6 +185,7 @@ jobs:
           SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY}
           NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
           NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
           TEST_SUPABASE_URL=${TEST_SUPABASE_URL}
           TEST_SUPABASE_SECRET_KEY=${TEST_SUPABASE_SECRET_KEY}
 
@@ -204,6 +205,28 @@ jobs:
           RATE_LIMIT_CHAT_CREATE_MAX=100000
           RATE_LIMIT_UPLOAD_MAX=100000
           EOF
+
+      # Cache the Next.js incremental build output (.next/cache).
+      # This is separate from node_modules and dramatically speeds up
+      # subsequent `next build` runs (turbopack traces + RSC chunks).
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: frontend/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/src/**/*.{ts,tsx}', 'frontend/public/**') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}-
+
+      # Pre-build the frontend so Playwright can serve it with `next start`
+      # instead of `next dev`.  next start boots in ~2 s with no cold-compile
+      # during tests; next dev in CI caused the 30-minute timeout.
+      # NEXT_PUBLIC_* vars must be present at build time (baked into the bundle).
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: npm run build
 
       - name: Run Playwright suite
         run: npm run test:e2e
