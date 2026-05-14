@@ -40,6 +40,30 @@ in CI — the four passing auth tests catch the kinds of regressions
 that broke us during initial bring-up (rate-limit blow-ups, race
 conditions in login/logout, missing env vars).
 
+### `auth › log-out returns the user to the marketing root` now fails
+**File:** `e2e/auth.spec.ts:31`
+
+This test passed previously and now times out: after sign-out the browser
+lands at `/login` instead of the marketing root `/`. Likely the 100 ms
+auth-guard debounce in `(pages)/layout.tsx` (documented below) is losing
+the race differently now, OR the redirect-after-logout target was changed
+without updating the spec. Confirm whether the intended post-logout
+destination is `/` or `/login`, then either fix the redirect or update
+the test expectation. Surfaced during the chatTools tool-registry refactor
+e2e run; pre-existing — not caused by that change.
+
+### Test Supabase project missing `public.user_profiles` migration
+**Symptom:** During e2e signup the backend logs
+`Could not find the table 'public.user_profiles' in the schema cache`,
+and the signup helper warns
+`failed to persist profile fields`.
+
+Signup itself still completes (the user row in `auth.users` is created
+and login works), but profile metadata isn't persisted. The test
+Supabase project is behind on migrations relative to the codebase. Apply
+the missing migration from `supabase/` to the test project. Cosmetic
+today — surfaces in the e2e console but doesn't fail any test.
+
 ### Login & logout race conditions — patched, not properly fixed
 **File:** `frontend/src/app/(pages)/layout.tsx`
 

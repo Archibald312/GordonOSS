@@ -6,7 +6,6 @@ import { loadActiveVersion } from "../lib/documentVersions";
 import { normalizeDocxZipPaths } from "../lib/convert";
 import {
     runLLMStream,
-    TABULAR_TOOLS,
     type ChatMessage,
     type TabularCellStore,
 } from "../lib/chatTools";
@@ -1320,7 +1319,6 @@ tabularRouter.post("/:reviewId/chat", requireAuth, async (req, res) => {
             userId,
             db,
             write,
-            extraTools: TABULAR_TOOLS,
             tabularStore,
             buildCitations: (text) =>
                 extractTabularAnnotations(text, tabularStore),

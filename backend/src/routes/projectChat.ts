@@ -8,7 +8,6 @@ import {
     enrichWithPriorEvents,
     extractAnnotations,
     runLLMStream,
-    PROJECT_EXTRA_TOOLS,
     type ChatMessage,
 } from "../lib/chatTools";
 import { getUserApiKeys } from "../lib/userSettings";
@@ -164,7 +163,6 @@ projectChatRouter.post("/", requireAuth, async (req, res) => {
             userId,
             db,
             write,
-            extraTools: PROJECT_EXTRA_TOOLS,
             workflowStore,
             model,
             apiKeys,
