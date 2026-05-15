@@ -49,6 +49,16 @@ export function assertFreeTierAllowed(input: FreeTierGuardInput): void {
     );
   }
 
+  const docFilenames = input.documentFilenames ?? [];
+  const isProd = process.env.NODE_ENV === "production";
+
+  // Dev-mode bypass: in non-production environments, a free-tier call carrying
+  // no documents poses no data-privacy risk (the guard exists to keep customer
+  // documents off free-tier providers). Production still requires an explicit
+  // FREE_TIER_FIXTURE_ALLOWLIST so the operator has consciously enumerated
+  // which fixtures may be processed.
+  if (!isProd && docFilenames.length === 0) return;
+
   const allowlist = new Set(
     (process.env.FREE_TIER_FIXTURE_ALLOWLIST ?? "")
       .split(",")
@@ -63,7 +73,6 @@ export function assertFreeTierAllowed(input: FreeTierGuardInput): void {
     );
   }
 
-  const docFilenames = input.documentFilenames ?? [];
   if (docFilenames.length === 0) return; // no documents — no data-privacy risk
 
   const offenders = docFilenames.filter((f) => !allowlist.has(f));
