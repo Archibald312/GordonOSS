@@ -961,10 +961,15 @@ async function handleDocumentUpload(
       : updated;
     return void res.status(201).json(responseDoc);
   } catch (e) {
+    const msg =
+      e instanceof AggregateError
+        ? `${e.message}: [${e.errors.map(String).join(", ")}]`
+        : String(e);
+    console.error("[upload] document processing failed:", e);
     await db.from("documents").update({ status: "error" }).eq("id", doc.id);
     return void res
       .status(500)
-      .json({ detail: `Document processing failed: ${String(e)}` });
+      .json({ detail: `Document processing failed: ${msg}` });
   }
 }
 
