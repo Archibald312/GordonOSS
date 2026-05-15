@@ -49,9 +49,6 @@ export function assertFreeTierAllowed(input: FreeTierGuardInput): void {
     );
   }
 
-  const docFilenames = input.documentFilenames ?? [];
-  if (docFilenames.length === 0) return; // no documents — no data-privacy risk
-
   const allowlist = new Set(
     (process.env.FREE_TIER_FIXTURE_ALLOWLIST ?? "")
       .split(",")
@@ -65,6 +62,9 @@ export function assertFreeTierAllowed(input: FreeTierGuardInput): void {
         "fixture filenames (comma-separated) that may be processed by free-tier providers.",
     );
   }
+
+  const docFilenames = input.documentFilenames ?? [];
+  if (docFilenames.length === 0) return; // no documents — no data-privacy risk
 
   const offenders = docFilenames.filter((f) => !allowlist.has(f));
   if (offenders.length > 0) {
