@@ -41,12 +41,32 @@ describe("assertFreeTierAllowed", () => {
     );
   });
 
-  it("throws when ALLOW_FREE_TIER_LLM='true' but no allowlist is configured", () => {
+  it("throws in production when ALLOW_FREE_TIER_LLM='true' but no allowlist is configured", () => {
+    vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("ALLOW_FREE_TIER_LLM", "true");
     vi.stubEnv("FREE_TIER_FIXTURE_ALLOWLIST", "");
     expect(() => assertFreeTierAllowed({ model: "gemini-2.5-flash-lite" })).toThrow(
       /FREE_TIER_FIXTURE_ALLOWLIST/,
     );
+  });
+
+  it("allows no-document calls in dev mode without an allowlist", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("ALLOW_FREE_TIER_LLM", "true");
+    vi.stubEnv("FREE_TIER_FIXTURE_ALLOWLIST", "");
+    expect(() => assertFreeTierAllowed({ model: "gemini-2.5-flash-lite" })).not.toThrow();
+  });
+
+  it("still requires the allowlist in dev mode once documents are attached", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("ALLOW_FREE_TIER_LLM", "true");
+    vi.stubEnv("FREE_TIER_FIXTURE_ALLOWLIST", "");
+    expect(() =>
+      assertFreeTierAllowed({
+        model: "gemini-2.5-flash-lite",
+        documentFilenames: ["any-doc.pdf"],
+      }),
+    ).toThrow(/FREE_TIER_FIXTURE_ALLOWLIST/);
   });
 
   it("allows a call carrying only allowlisted filenames", () => {

@@ -87,6 +87,80 @@ export const PROMPT_PRESETS: ColumnPreset[] = [
         format: "yes_no",
         prompt: "Does this agreement contain a force majeure clause?",
     },
+
+    // ─── Finance-specific presets ────────────────────────────────────────────
+    {
+        name: "Revenue",
+        matches: /\brevenue\b|\bnet sales\b|\btop[\s-]?line\b/i,
+        format: "monetary_amount",
+        prompt: "Extract reported revenue (or net sales). State the amount, currency, reporting period (e.g. FY2025, Q3 2025), and whether the figure is GAAP, non-GAAP, or adjusted. Quote the exact figure as it appears.",
+    },
+    {
+        name: "EBITDA",
+        matches: /\bebitda\b/i,
+        format: "monetary_amount",
+        prompt: 'Extract EBITDA. State the amount, currency, period, and whether it is Reported, Adjusted, Pro Forma, Run-Rate, or Bank EBITDA. List any add-backs disclosed. If multiple EBITDA figures are presented, return each separately and identify the source.',
+    },
+    {
+        name: "Net Income",
+        matches: /\bnet income\b|\bnet earnings\b|\bnet profit\b|\bnet loss\b/i,
+        format: "monetary_amount",
+        prompt: "Extract net income (or net loss). State the amount, currency, reporting period, and whether attributable to the parent or including non-controlling interests.",
+    },
+    {
+        name: "Free Cash Flow",
+        matches: /\bfree cash flow\b|\bfcf\b/i,
+        format: "monetary_amount",
+        prompt: 'Extract free cash flow. State the amount, currency, period, and the definition used (e.g. CFO minus capex; unlevered FCF; FCF to equity). Note any non-standard adjustments.',
+    },
+    {
+        name: "Leverage Ratio",
+        matches: /\bleverage ratio\b|\bnet debt\s*\/\s*ebitda\b|\bdebt\s*\/\s*ebitda\b/i,
+        format: "text",
+        prompt: 'Extract the leverage ratio. State the ratio value (e.g. 3.5x), the numerator definition (total debt vs. net debt; senior vs. total), the denominator definition (LTM, NTM, Adjusted EBITDA), and the test date or covenant test point.',
+    },
+    {
+        name: "Interest Coverage",
+        matches: /\binterest coverage\b|\binterest cover\b/i,
+        format: "text",
+        prompt: 'Extract the interest coverage ratio. State the ratio value, the numerator (e.g. EBITDA, EBIT, Adjusted EBITDA), the denominator (cash interest, total interest), and the test period.',
+    },
+    {
+        name: "Reporting Period",
+        matches: /\b(reporting )?period\b|\bfiscal year\b|\bfy\b|\bquarter\b/i,
+        format: "text",
+        prompt: 'State the reporting period covered by this document (e.g. "FY2025", "Q2 2025", "twelve months ended 30 Jun 2025"). Note the fiscal year-end if it differs from calendar year.',
+    },
+    {
+        name: "Maturity",
+        matches: /\bmaturity\b|\bmaturity date\b/i,
+        format: "date",
+        prompt: 'State the final maturity date of the facility, instrument, or obligation in DD Mon YYYY format. If multiple tranches have different maturities, list each.',
+    },
+    {
+        name: "Coupon / Rate",
+        matches: /\bcoupon\b|\binterest rate\b|\bspread\b|\bmargin\b/i,
+        format: "text",
+        prompt: 'Extract the applicable interest rate. State the reference rate (SOFR, EURIBOR, fixed, etc.), the spread/margin (in bps), any margin ratchet or step-ups, the day-count convention, and the interest period.',
+    },
+    {
+        name: "Currency",
+        matches: /\bcurrency\b|\bdenomination\b/i,
+        format: "text",
+        prompt: 'State the currency in which the amount, facility, or instrument is denominated using ISO 4217 codes (e.g. USD, EUR, GBP). If multi-currency, list each currency and its applicable use.',
+    },
+    {
+        name: "Capex",
+        matches: /\bcapex\b|\bcapital expenditures?\b/i,
+        format: "monetary_amount",
+        prompt: 'Extract capital expenditures. State the amount, currency, period, and whether maintenance capex and growth capex are reported separately. Note any guidance for future periods.',
+    },
+    {
+        name: "Margin",
+        matches: /\b(gross|operating|ebitda|net) margin\b/i,
+        format: "percentage",
+        prompt: 'Extract the margin requested by the column title. State the percentage, the period, and the numerator/denominator basis. If the document reports both reported and adjusted margins, return each separately.',
+    },
 ];
 
 export function getPresetConfig(

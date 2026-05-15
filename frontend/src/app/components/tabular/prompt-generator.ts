@@ -37,6 +37,31 @@ const PROMPT_PRESETS: Array<{
         prompt: () =>
             'Extract the payment and fee terms in the document. Summarize payment obligations, amounts, timing, currencies, fee types, and any consequences for late or missed payment. If not addressed, state "Not addressed".',
     },
+    {
+        matches: /\brevenue\b|\bnet sales\b|\btop[\s-]?line\b/i,
+        prompt: () =>
+            'Extract reported revenue (or net sales) in the document. State the amount, currency, reporting period, whether GAAP/non-GAAP/adjusted, and segment breakdown if disclosed. If not addressed, state "Not addressed".',
+    },
+    {
+        matches: /\bebitda\b/i,
+        prompt: () =>
+            'Extract EBITDA in the document. State the amount, currency, period, and whether Reported, Adjusted, Pro Forma, Run-Rate, or Bank EBITDA. List disclosed add-backs. If not addressed, state "Not addressed".',
+    },
+    {
+        matches: /\bleverage\b|\bdebt\s*\/\s*ebitda\b/i,
+        prompt: () =>
+            'Extract the leverage ratio in the document. State the value, numerator (total vs. net debt; senior vs. total), denominator (LTM, NTM, Adjusted EBITDA), and the test/measurement date. If not addressed, state "Not addressed".',
+    },
+    {
+        matches: /\bmaturity\b/i,
+        prompt: () =>
+            'Identify the maturity provisions in the document. State the final maturity date (or per-tranche maturities) and any extension or springing maturity mechanics. If not addressed, state "Not addressed".',
+    },
+    {
+        matches: /\binterest rate\b|\bcoupon\b|\bspread\b|\bmargin\b/i,
+        prompt: () =>
+            'Extract the interest rate or coupon in the document. State the reference rate (SOFR, EURIBOR, fixed, etc.), spread/margin in bps, any margin ratchet or step-ups, the day-count convention, and the interest period. If not addressed, state "Not addressed".',
+    },
 ];
 
 export function getPresetTabularPrompt(title: string): string | null {

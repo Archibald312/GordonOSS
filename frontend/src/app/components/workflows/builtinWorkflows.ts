@@ -1,6 +1,6 @@
-import type { MikeWorkflow } from "../shared/types";
+import type { GordonWorkflow } from "../shared/types";
 
-export const BUILT_IN_WORKFLOWS: MikeWorkflow[] = [
+export const BUILT_IN_WORKFLOWS: GordonWorkflow[] = [
     {
         id: "builtin-cp-checklist",
         user_id: null,

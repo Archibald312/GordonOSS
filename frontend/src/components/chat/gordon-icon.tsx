@@ -88,22 +88,22 @@ function Blades({ ids }: { ids: Record<string, string> }) {
     );
 }
 
-export function MikeIcon({
+export function GordonIcon({
     spin = false,
     done = false,
     error = false,
-    mike = false,
+    gordon = false,
     size = 24,
     style,
 }: {
     spin?: boolean;
     done?: boolean;
     error?: boolean;
-    mike?: boolean;
+    gordon?: boolean;
     size?: number;
     style?: React.CSSProperties;
 }) {
-    void mike;
+    void gordon;
     const id = useId().replace(/:/g, "");
     const palette = error
         ? ERROR_PALETTE

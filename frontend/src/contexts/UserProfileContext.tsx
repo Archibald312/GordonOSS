@@ -16,7 +16,7 @@ import {
     getUserProfile,
     saveApiKey,
     updateUserProfile,
-} from "@/app/lib/mikeApi";
+} from "@/app/lib/gordonApi";
 
 interface UserProfile {
     displayName: string | null;

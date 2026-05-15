@@ -8,7 +8,7 @@ export const generateDocxTool: ToolDefinition<"generate_docx"> = {
         function: {
             name: "generate_docx",
             description:
-                "Generate a Word (.docx) document from structured content. Use this when the user asks you to draft, create, or produce a legal document. Returns a download URL for the generated file.",
+                "Generate a Word (.docx) document from structured content. Use this when the user asks you to draft, create, or produce a finance document (e.g. memo, IC paper, term sheet, diligence report, contract). Returns a download URL for the generated file.",
             parameters: {
                 type: "object",
                 properties: {
