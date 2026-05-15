@@ -182,6 +182,7 @@ export function ProjectsOverview() {
                 <div ref={actionsRef} className="relative">
                     <button
                         onClick={() => setActionsOpen((v) => !v)}
+                        data-testid="bulk-actions-toggle"
                         className="flex items-center gap-1 text-xs font-medium text-gray-700 hover:text-gray-900 transition-colors"
                     >
                         Actions
@@ -191,6 +192,7 @@ export function ProjectsOverview() {
                         <div className="absolute top-full right-0 mt-1 w-36 rounded-lg border border-gray-100 bg-white shadow-lg z-50 overflow-hidden">
                             <button
                                 onClick={handleDeleteSelected}
+                                data-testid="bulk-actions-delete"
                                 className="w-full px-3 py-1.5 text-left text-xs text-red-600 hover:bg-red-50 transition-colors"
                             >
                                 Delete
@@ -217,6 +219,8 @@ export function ProjectsOverview() {
                     />
                     <button
                         onClick={() => setModalOpen(true)}
+                        aria-label="New project"
+                        data-testid="new-project-button"
                         className="flex items-center justify-center p-1.5 text-gray-500 hover:text-gray-900 transition-colors"
                     >
                         <Plus className="h-4 w-4" />
@@ -337,6 +341,9 @@ export function ProjectsOverview() {
                             return (
                             <div
                                 key={project.id}
+                                data-testid="project-row"
+                                data-project-name={project.name}
+                                data-project-id={project.id}
                                 onClick={() => {
                                     if (renamingId === project.id) return;
                                     router.push(`/projects/${project.id}`);
@@ -349,6 +356,7 @@ export function ProjectsOverview() {
                                 >
                                     <input
                                         type="checkbox"
+                                        data-testid="project-row-checkbox"
                                         checked={selectedIds.includes(
                                             project.id,
                                         )}
@@ -362,6 +370,7 @@ export function ProjectsOverview() {
                                     {renamingId === project.id ? (
                                         <input
                                             autoFocus
+                                            data-testid="project-row-rename-input"
                                             value={renameValue}
                                             onChange={(e) =>
                                                 setRenameValue(e.target.value)

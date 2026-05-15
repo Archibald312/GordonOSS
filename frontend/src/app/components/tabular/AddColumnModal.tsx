@@ -252,6 +252,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                                 });
                                             }}
                                             placeholder="Column name"
+                                            data-testid={index === 0 ? "column-name-input" : undefined}
                                             className="flex-1 text-2xl font-serif text-gray-800 placeholder-gray-400 focus:outline-none bg-transparent"
                                             autoFocus={index === 0}
                                         />
@@ -465,6 +466,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                         })
                                     }
                                     placeholder="Write the analysis prompt — describe what Mike should extract from each document for this column…"
+                                    data-testid={index === 0 ? "column-prompt-input" : undefined}
                                     className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:border-gray-400 focus:outline-none bg-transparent resize-none leading-relaxed"
                                 />
                             </div>
@@ -508,6 +510,7 @@ export function AddColumnModal({ open, existingCount, onClose, onAdd, editingCol
                                 disabled={columns.some(
                                     (col) => !col.name.trim() || !col.prompt.trim(),
                                 )}
+                                data-testid="add-column-submit"
                                 className="rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40 transition-colors"
                             >
                                 {isEditing ? "Save changes" : "Add columns"}

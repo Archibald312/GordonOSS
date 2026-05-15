@@ -268,6 +268,7 @@ export function AddDocumentsModal({
                             multiple
                             className="hidden"
                             onChange={handleUpload}
+                            data-testid="add-docs-file-input"
                         />
                         <button
                             onClick={() => fileInputRef.current?.click()}
@@ -297,6 +298,7 @@ export function AddDocumentsModal({
                         <button
                             onClick={handleConfirm}
                             disabled={selectedIds.size === 0 || uploading}
+                            data-testid="add-docs-confirm"
                             className="rounded-lg bg-gray-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-40"
                         >
                             {uploading ? "Saving…" : "Confirm"}

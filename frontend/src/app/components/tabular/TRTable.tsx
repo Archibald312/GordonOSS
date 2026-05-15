@@ -188,6 +188,7 @@ export const TRTable = forwardRef<TRTableHandle, Props>(function TRTable(
                     <div className="mt-4 flex items-center gap-2">
                         <button
                             onClick={onAddColumn}
+                            data-testid="add-column-empty-state"
                             className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-gray-700 shadow-md"
                         >
                             + Add Columns

@@ -593,6 +593,7 @@ export function TRView({ reviewId, projectId }: Props) {
                                     documents.length === 0 ||
                                     savingColumnsConfig
                                 }
+                                data-testid="generate-cells"
                                 className={`flex h-8 items-center justify-center gap-1.5 px-3 text-sm transition-colors ${
                                     generating ||
                                     columns.length === 0 ||
@@ -676,6 +677,7 @@ export function TRView({ reviewId, projectId }: Props) {
                             disabled={
                                 loading || savingColumn || savingColumnsConfig
                             }
+                            data-testid="add-column-button"
                             className={`flex items-center gap-1 text-xs font-medium transition-colors ${
                                 loading || savingColumn || savingColumnsConfig
                                     ? "text-gray-300 cursor-default"

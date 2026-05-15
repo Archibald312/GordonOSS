@@ -39,6 +39,19 @@ Setup steps (one-time):
 
 Playwright performs a placeholder check on startup: if any of `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, or `GEMINI_API_KEY` still contain the literal `CHANGEME`, it refuses to start with a clear error.
 
+### Object storage (Cloudflare R2)
+
+`documents.spec.ts`, `chat.spec.ts`, and `tabular.spec.ts` upload `sample.pdf` to the backend, which writes to R2 via the S3 API. You need a separate R2 bucket for testing — production credentials must not be used.
+
+1. Cloudflare dashboard → **R2 Object Storage** → enable R2 (requires a payment method on file, but the free tier — 10 GB / 1M Class A ops / 10M Class B ops per month — easily covers e2e usage).
+2. Create a bucket (e.g. `gordonoss-test`).
+3. "Manage R2 API Tokens" → **Create User API Token** with **Object Read & Write** scoped to the new bucket. Copy the Access Key ID, Secret Access Key, and the account-level S3 endpoint URL (`https://<account-id>.r2.cloudflarestorage.com`).
+4. Paste into `backend/.env.test`:
+   - `R2_ENDPOINT_URL`
+   - `R2_ACCESS_KEY_ID`
+   - `R2_SECRET_ACCESS_KEY`
+   - `R2_BUCKET_NAME`
+
 ## Sample fixture
 
 The tests upload `e2e/fixtures/sample.pdf`. It is a small (~4 KB) four-page PDF containing original prose written for this repository. Regenerate it with:

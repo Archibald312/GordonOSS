@@ -80,6 +80,7 @@ export function ProjectAssistantTab({
                     </p>
                     <button
                         onClick={onCreateChat}
+                        data-testid="new-chat-empty-state"
                         className="mt-4 inline-flex items-center gap-1 rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700 transition-colors shadow-md"
                     >
                         + Create New
