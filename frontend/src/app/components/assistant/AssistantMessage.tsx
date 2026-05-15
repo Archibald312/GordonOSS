@@ -955,6 +955,7 @@ function MarkdownContent({
                                             );
                                             onCitationClick?.(annotation);
                                         }}
+                                        data-testid="citation-marker"
                                         className="mx-0.5 inline-flex items-center justify-center rounded-full w-4 h-4 text-[10px] font-medium transition-colors align-super bg-gray-100 text-gray-900 hover:bg-gray-200"
                                         title={tooltipText}
                                     >
@@ -1352,7 +1353,7 @@ export function AssistantMessage({
     };
 
     return (
-        <div style={{ minHeight }}>
+        <div style={{ minHeight }} data-testid="assistant-message">
             <ResponseStatus status={status} />
             <div className="w-full font-inter relative mt-2">
                 {events && events.length > 0 ? (

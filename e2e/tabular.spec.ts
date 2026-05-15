@@ -1,66 +1,85 @@
 import { resolve } from "node:path";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { createAndLoginTestUser } from "./helpers/auth";
 
 const SAMPLE_PDF = resolve(__dirname, "fixtures", "sample.pdf");
 
-// Tabular review extraction depends on a real LLM provider being available
-// to the backend (see e2e/README.md).
-// TODO(TECHDEBT.md): test body fails on selectors / flows that have
-// drifted from the current UI.  Auth setup (createAndLoginTestUser)
-// works.  Re-enable once selectors are fixed against the current
-// frontend.  Download playwright-report from CI to see the exact
-// failure point.
-test.describe.skip("tabular review", () => {
-  test("create a review with two columns, add sample.pdf as a row, generate, and see cells populated with citations", async ({
+// Tabular extraction depends on a real LLM provider.  The backend's
+// `tabular_model` defaults to `gemini-3-flash-preview`, which is on the
+// free-tier list in `backend/src/lib/llm/freeTierGuard.ts`.  The test env
+// sets ALLOW_FREE_TIER_LLM=true and FREE_TIER_FIXTURE_ALLOWLIST=sample.pdf,
+// so the call routes to Gemini's free tier on the public-domain fixture.
+
+async function createProjectAndOpen(page: Page, name: string) {
+  await page.goto("/projects");
+  await page.getByTestId("new-project-button").click();
+  await page.getByPlaceholder("Project name").fill(name);
+  await page.getByRole("button", { name: /^create project$/i }).click();
+  await page.waitForURL(/\/projects\/[a-f0-9-]+/, { timeout: 15_000 });
+}
+
+async function uploadSamplePdf(page: Page) {
+  await page.getByTestId("add-documents-button").click();
+  await page.getByTestId("add-docs-file-input").setInputFiles(SAMPLE_PDF);
+  const confirm = page.getByTestId("add-docs-confirm");
+  await expect(confirm).toBeEnabled({ timeout: 60_000 });
+  await confirm.click();
+  await expect(
+    page.locator('[data-testid="document-row"][data-doc-filename="sample.pdf"]'),
+  ).toBeVisible({ timeout: 30_000 });
+}
+
+test.describe("tabular review", () => {
+  test("create a review, add a column, run, and see a cell populate with a citation", async ({
     page,
   }) => {
-    test.setTimeout(240_000); // Extraction across 2 columns × 1 row × 1 LLM call/cell
+    test.setTimeout(300_000); // LLM extraction across rows × columns
 
     await createAndLoginTestUser(page, "tab");
+    await createProjectAndOpen(page, `Tab Project ${Date.now()}`);
+    await uploadSamplePdf(page);
 
-    // Land on tabular reviews root and create a new one.
-    await page.goto("/tabular-reviews");
-    await page.getByRole("button", { name: /(new review|create review|add review)/i }).first().click();
+    // Switch to the project's Tabular Reviews tab.  Going via URL is more
+    // reliable than clicking the toolbar tab whose accessible name may drift.
+    const projectPath = new URL(page.url()).pathname.replace(/\/$/, "");
+    await page.goto(`${projectPath}/tabular-reviews`);
 
-    // Fill the title and attach the sample PDF.
-    await page.getByPlaceholder(/review title/i).fill(`Tabular ${Date.now()}`);
-    await page.locator('input[type="file"]').first().setInputFiles(SAMPLE_PDF);
-
-    // Submit the create modal.
-    await page.getByRole("button", { name: /create review/i }).click();
+    // No reviews yet — the empty-state "+ Create New" opens AddNewTRModal.
+    // When invoked from inside a project, the modal is in projectMode and
+    // pre-selects all ready docs, so we only need to provide the title.
+    await page.getByTestId("new-review-empty-state").click();
+    await page.getByPlaceholder(/review name/i).fill(`Review ${Date.now()}`);
+    await page.getByTestId("add-tr-create").click();
     await page.waitForURL(/\/tabular-reviews\/[a-f0-9-]+/, { timeout: 15_000 });
 
-    // Add column 1: Topic (text)
-    await page.getByRole("button", { name: /(add column|new column)/i }).first().click();
-    await page.locator('input[placeholder*="column" i], input[name*="name" i]').first().fill("Topic");
-    // Format dropdown is a Radix menu; "text" is usually the default so we
-    // can submit without changing it.
-    await page.getByRole("button", { name: /^save$/i }).click();
-    await expect(page.getByText(/topic/i)).toBeVisible({ timeout: 10_000 });
+    // Add one column with an explicit prompt (skipping the "auto-generate prompt"
+    // button, which would burn an extra LLM call).  The empty-state Add Columns
+    // button only renders when both docs and columns are empty; once a doc is
+    // attached (which it is, from the project), the toolbar's Add Columns
+    // button is the canonical trigger.
+    await page.getByTestId("add-column-button").click();
+    await page.getByTestId("column-name-input").fill("Summary");
+    await page
+      .getByTestId("column-prompt-input")
+      .fill(
+        "In one sentence, summarize what this document is about. Cite the source.",
+      );
+    await page.getByTestId("add-column-submit").click();
 
-    // Add column 2: Number of pages (number)
-    await page.getByRole("button", { name: /(add column|new column)/i }).first().click();
-    await page.locator('input[placeholder*="column" i], input[name*="name" i]').first().fill("Number of pages");
-    // Switch the format to "number"
-    await page.getByRole("button", { name: /format|type/i }).first().click();
-    await page.getByRole("menuitemradio", { name: /^number$/i }).click();
-    await page.getByRole("button", { name: /^save$/i }).click();
-    await expect(page.getByText(/number of pages/i)).toBeVisible({ timeout: 10_000 });
+    // Kick off generation.  Run is disabled while the columns_config save is in
+    // flight after Add — wait for it to re-enable before clicking.
+    const run = page.getByTestId("generate-cells");
+    await expect(run).toBeEnabled({ timeout: 30_000 });
+    await run.click();
 
-    // Click Generate (Play icon).  It has no text so we fall back to a
-    // title-or-aria match.
-    await page.getByRole("button", { name: /(generate|play|run)/i }).first().click();
+    // Wait for at least one cell-citation chip to render inside any cell.
+    const citation = page.getByTestId("cell-citation").first();
+    await expect(citation).toBeVisible({ timeout: 240_000 });
 
-    // Wait for at least one citation marker to appear inside any table cell.
-    const citation = page.locator("text=/\\[1\\]/").first();
-    await expect(citation).toBeVisible({ timeout: 180_000 });
-
-    // Both columns should have at least one non-empty cell content.
-    // We weak-assert on the table containing the literal "4" anywhere (page
-    // count from sample.pdf) and a substantial amount of text overall.
-    const bodyText = await page.locator("body").innerText();
-    expect(bodyText).toMatch(/\b4\b/);
-    expect(bodyText.length).toBeGreaterThan(400);
+    // Sanity: at least one cell is in the `ready` state.
+    const readyCell = page
+      .locator('[data-testid="tabular-cell"][data-cell-status="ready"]')
+      .first();
+    await expect(readyCell).toBeVisible();
   });
 });

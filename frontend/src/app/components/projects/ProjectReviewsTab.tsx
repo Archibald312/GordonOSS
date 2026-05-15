@@ -89,6 +89,7 @@ export function ProjectReviewsTab({
                     <button
                         onClick={onCreateReview}
                         disabled={creatingReview || docs.length === 0}
+                        data-testid="new-review-empty-state"
                         className="mt-4 inline-flex items-center gap-1 rounded-full bg-gray-900 px-3 py-1 text-xs font-medium text-white hover:bg-gray-700 transition-colors shadow-md disabled:opacity-40"
                     >
                         + Create New

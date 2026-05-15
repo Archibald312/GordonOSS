@@ -110,6 +110,7 @@ function CellMarkdown({
                                             onExpand();
                                         }
                                     }}
+                                    data-testid="cell-citation"
                                     className="mx-0.5 inline-flex items-center justify-center rounded-full bg-gray-200 w-3.5 h-3.5 text-[9px] font-medium text-gray-700 align-super cursor-pointer hover:bg-gray-300 transition-colors"
                                 >
                                     {idx + 1}
@@ -172,7 +173,7 @@ export function TabularCell({
 
     if (cell.status === "generating") {
         return (
-            <div className="h-10 px-2 flex items-center">
+            <div className="h-10 px-2 flex items-center" data-testid="tabular-cell" data-cell-status="generating">
                 <div className="h-4 w-full rounded bg-gray-100 animate-pulse" />
             </div>
         );
@@ -180,14 +181,14 @@ export function TabularCell({
 
     if (cell.status === "error") {
         return (
-            <div className="h-10 flex items-center justify-center text-gray-300">
+            <div className="h-10 flex items-center justify-center text-gray-300" data-testid="tabular-cell" data-cell-status="error">
                 <AlertCircle className="h-4 w-4 text-red-300" />
             </div>
         );
     }
 
     if (!cell.content?.summary) {
-        return <div className="h-10" />;
+        return <div className="h-10" data-testid="tabular-cell" data-cell-status="empty" />;
     }
 
     const { processed, citations, pills } = preprocessCellMarkdown(
@@ -208,7 +209,7 @@ export function TabularCell({
     }
 
     return (
-        <div ref={containerRef} className="relative">
+        <div ref={containerRef} className="relative" data-testid="tabular-cell" data-cell-status="ready">
             {/* Normal cell row — always visible, preserves table layout */}
             <div
                 className="group relative h-10 px-2 flex items-center text-xs text-gray-800 leading-relaxed cursor-pointer hover:bg-gray-50 transition-colors"

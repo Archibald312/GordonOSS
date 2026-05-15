@@ -68,6 +68,7 @@ export function RowActionMenuItems({
             {onRename && (
                 <button
                     onClick={() => { onClose(); onRename(); }}
+                    data-testid="row-action-rename"
                     className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
                 >
                     <Pencil className="h-3.5 w-3.5" />
@@ -86,6 +87,7 @@ export function RowActionMenuItems({
             {onDownload && (
                 <button
                     onClick={() => { onClose(); onDownload(); }}
+                    data-testid="row-action-download"
                     className="flex items-center gap-2 w-full px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
                 >
                     <Download className="h-3.5 w-3.5" />
@@ -141,6 +143,7 @@ export function RowActionMenuItems({
                 <button
                     onClick={() => { onClose(); onDelete(); }}
                     disabled={deleting}
+                    data-testid="row-action-delete"
                     className="flex items-center gap-2 w-full px-3 py-2 text-xs text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
                 >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -199,6 +202,8 @@ export function RowActions(props: Props) {
             <button
                 ref={btnRef}
                 onClick={handleToggle}
+                aria-label="Row actions"
+                data-testid="row-actions-toggle"
                 className="flex items-center justify-center w-6 h-6 rounded text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors leading-none"
             >
                 <span className="tracking-widest text-xs">···</span>

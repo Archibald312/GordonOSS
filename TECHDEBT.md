@@ -11,15 +11,10 @@ permissive rule / workaround it references.
 
 ## High priority
 
-### Re-enable skipped Playwright specs once selectors are fixed
-**Files:** `e2e/chat.spec.ts`, `e2e/documents.spec.ts`, `e2e/projects.spec.ts`, `e2e/tabular.spec.ts`
-
-All four product-flow specs are wrapped in `test.describe.skip()`.  The
-auth setup (`createAndLoginTestUser`) works — proven by all four auth
-tests in `e2e/auth.spec.ts` passing.  Each spec then fails inside the
-test body on selectors / flows that don't match the current frontend
-(e.g. `createProject` helper in `documents.spec.ts`, the "new project"
-button locator in `projects.spec.ts`, the chat input flow, etc.).
+### ~~Re-enable skipped Playwright specs once selectors are fixed~~
+All four product-flow specs are now un-skipped — see Done.  Full suite
+(auth + projects + documents + chat + tabular) is 13/13 green locally
+in ~1.4 minutes.
 
 To re-enable:
 
@@ -148,3 +143,59 @@ matters.
 ## Done
 
 <!-- Move items here as they're fixed. Include the commit SHA. -->
+
+### Re-enable `e2e/tabular.spec.ts` — _pending commit SHA_
+Added `data-testid` attributes to `ProjectReviewsTab` ("+ Create New"),
+`AddNewTRModal` (Create submit), `AddColumnModal` (name input, prompt
+textarea, submit), `TabularReviewView` (Add Columns toolbar button,
+Run button), and `TabularCell` (outer wrapper with `data-cell-status`,
+citation chip).  Rewrote `tabular.spec.ts` to (1) create a project,
+(2) upload sample.pdf, (3) open `/projects/{id}/tabular-reviews`,
+(4) create a review via the empty-state — `AddNewTRModal` auto-selects
+the ready docs when in project mode so no extra picker step is needed,
+(5) add a column with a manual prompt (skipping auto-generate to save an
+LLM call), (6) click Run, (7) wait for a `cell-citation` chip to render.
+Backend's `tabular_model` defaults to `gemini-3-flash-preview` which is
+already on the free-tier allowlist, no settings needed.  1/1 green in
+~18s; full e2e suite (13 tests) green in 1.4 min.
+
+### Re-enable `e2e/chat.spec.ts` — _pending commit SHA_
+Added `data-testid` attributes to `ChatInput` (textarea, send button) and
+`AssistantMessage` (outer wrapper, citation marker button), plus
+`new-chat-empty-state` on the assistant tab's "+ Create New" button.
+Rewrote `chat.spec.ts` to (1) create a project, (2) upload sample.pdf
+through the same modal flow as the documents spec, (3) navigate to
+`/projects/{id}/assistant`, (4) click the empty-state button which
+creates a chat and redirects to `/projects/{id}/assistant/chat/{chatId}`,
+(5) submit a question via the textarea, (6) wait for `citation-marker`
+to render inside the streamed assistant response.  Default model
+(`gemini-3-flash-preview`) is on the free-tier allowlist in
+`backend/src/lib/llm/freeTierGuard.ts`, so no model toggle is needed.
+Setup gotcha: the original `GEMINI_API_KEY` in `.env.test` had expired
+("API_KEY_INVALID") — rotate at <https://aistudio.google.com/app/apikey>
+when the test starts failing with a 400 from googleapis.  1/1 green
+locally in ~18s.
+
+### Re-enable `e2e/documents.spec.ts` — _pending commit SHA_
+Added `data-testid` attributes to `AddDocumentsModal` (file input, Confirm)
+and to each document row + the project page's "Add Documents" toolbar
+button.  Rewrote `documents.spec.ts` around the current modal-based
+upload flow: open the modal, set files on the hidden input, wait for
+Confirm to re-enable, click Confirm, then assert the row in the
+project's document table by `data-doc-filename`.  Also added a
+`row-action-download` testid in `RowActions`.  Setup gotcha discovered:
+the test environment requires Cloudflare R2 credentials in
+`backend/.env.test` (`R2_ENDPOINT_URL`, `R2_ACCESS_KEY_ID`,
+`R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`) — the original README only
+documented Supabase + Gemini.  3/3 tests green locally.
+
+### Re-enable `e2e/projects.spec.ts` — _pending commit SHA_
+Added `data-testid` attributes to `ProjectsOverview`, `RowActions` (kebab
+toggle, Rename, Delete menu items) and rewrote `projects.spec.ts` to use
+them.  Fixed two flow drifts: (1) rename is launched from the row's
+kebab menu, not by clicking the row (which navigates into the project);
+(2) `Create project` redirects into `/projects/{id}` first, so the test
+navigates back to `/projects` before asserting the row.  All 4 tests
+green locally.  Setup gotcha discovered along the way: the test
+Supabase project must have `backend/schema.sql` applied — see
+`e2e/README.md` step 2.

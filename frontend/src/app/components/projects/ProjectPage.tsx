@@ -795,7 +795,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                         typeof doc.latest_version_number === "number" &&
                         doc.latest_version_number >= 1;
                     return (
-                        <div key={`doc-${doc.id}`}>
+                        <div key={`doc-${doc.id}`} data-testid="document-row" data-doc-filename={doc.filename} data-doc-id={doc.id}>
                             <div
                                 draggable={renamingDocumentId !== doc.id}
                                 onDragStart={(e) => {
@@ -1163,6 +1163,7 @@ export function ProjectPage({ projectId, initialTab = "documents" }: Props) {
                     </button>
                     <button
                         onClick={() => setAddDocsOpen(true)}
+                        data-testid="add-documents-button"
                         className="flex items-center gap-1 text-xs px-3 font-medium text-gray-500 hover:text-gray-700 transition-colors"
                     >
                         <Upload className="h-3.5 w-3.5" />
