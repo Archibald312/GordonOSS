@@ -10,7 +10,7 @@ import {
     Folder,
     Trash2,
 } from "lucide-react";
-import type { MikeDocument, MikeProject } from "./types";
+import type { GordonDocument, GordonProject } from "./types";
 import { VersionChip } from "./VersionChip";
 
 function formatDate(iso: string | null) {
@@ -29,8 +29,8 @@ export function DocFileIcon({ fileType }: { fileType: string | null }) {
 }
 
 interface FileDirectoryProps {
-    standaloneDocs: MikeDocument[];
-    directoryProjects: MikeProject[];
+    standaloneDocs: GordonDocument[];
+    directoryProjects: GordonProject[];
     loading: boolean;
     selectedIds: Set<string>;
     onChange: (ids: Set<string>) => void;

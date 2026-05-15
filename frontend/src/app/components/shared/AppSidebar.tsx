@@ -16,9 +16,9 @@ import { useUserProfile } from "@/contexts/UserProfileContext";
 import { useChatHistoryContext } from "@/app/contexts/ChatHistoryContext";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { MikeIcon } from "@/components/chat/mike-icon";
+import { GordonIcon } from "@/components/chat/gordon-icon";
 import { SidebarChatItem } from "@/app/components/shared/SidebarChatItem";
-import { listProjects } from "@/app/lib/mikeApi";
+import { listProjects } from "@/app/lib/gordonApi";
 
 const NAV_ITEMS = [
     { href: "/assistant", label: "Assistant", icon: MessageSquare },
@@ -127,13 +127,13 @@ export function AppSidebar({ isOpen, onToggle }: AppSidebarProps) {
                             href="/assistant"
                             className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
                         >
-                            <MikeIcon size={22} />
+                            <GordonIcon size={22} />
                             <span
                                 className={`text-2xl font-light font-serif ${
                                     shouldAnimate ? "sidebar-fade-in" : ""
                                 }`}
                             >
-                                Mike
+                                Gordon
                             </span>
                         </Link>
                     </div>

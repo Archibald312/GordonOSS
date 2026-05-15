@@ -130,5 +130,5 @@ app.use("/download", downloadsRouter);
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {
-  console.log(`Mike backend running on port ${PORT}`);
+  console.log(`Gordon backend running on port ${PORT}`);
 });

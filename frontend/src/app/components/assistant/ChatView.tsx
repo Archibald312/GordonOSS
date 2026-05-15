@@ -11,17 +11,17 @@ import {
 } from "./AssistantSidePanel";
 import { AssistantWorkflowModal } from "./AssistantWorkflowModal";
 import type {
-    MikeCitationAnnotation,
-    MikeEditAnnotation,
-    MikeMessage,
+    GordonCitationAnnotation,
+    GordonEditAnnotation,
+    GordonMessage,
 } from "../shared/types";
 import { useSidebar } from "@/app/contexts/SidebarContext";
 import { invalidateDocxBytes } from "@/app/hooks/useFetchDocxBytes";
 
 interface Props {
-    messages: MikeMessage[];
+    messages: GordonMessage[];
     isResponseLoading: boolean;
-    handleChat: (message: MikeMessage) => Promise<string | null>;
+    handleChat: (message: GordonMessage) => Promise<string | null>;
     cancel: () => void;
 }
 
@@ -131,7 +131,7 @@ export function ChatView({
      * AssistantMessage when the user clicks a numbered citation pill.
      */
     const openCitation = useCallback(
-        (citation: MikeCitationAnnotation) => {
+        (citation: GordonCitationAnnotation) => {
             upsertTab({
                 kind: "citation",
                 id: citation.document_id,
@@ -150,7 +150,7 @@ export function ChatView({
      * AssistantMessage when the user clicks an EditCard's View button.
      */
     const openEditor = useCallback(
-        (ann: MikeEditAnnotation, filename: string) => {
+        (ann: GordonEditAnnotation, filename: string) => {
             upsertTab({
                 kind: "edit",
                 id: ann.document_id,

@@ -7,12 +7,12 @@ import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import { Copy, Check, ChevronDown, Download, Loader2 } from "lucide-react";
-import { MikeIcon } from "@/components/chat/mike-icon";
+import { GordonIcon } from "@/components/chat/gordon-icon";
 import { displayCitationQuote, formatCitationPage } from "../shared/types";
 import type {
     AssistantEvent,
-    MikeCitationAnnotation,
-    MikeEditAnnotation,
+    GordonCitationAnnotation,
+    GordonEditAnnotation,
 } from "../shared/types";
 import { EditCard, applyOptimisticResolution } from "./EditCard";
 import { PreResponseWrapper } from "../shared/PreResponseWrapper";
@@ -51,11 +51,11 @@ function BulkEditActions({
     onError,
 }: {
     pending: {
-        annotation: MikeEditAnnotation;
+        annotation: GordonEditAnnotation;
         filename: string;
     }[];
     filenameByDocId: Map<string, string>;
-    onViewClick?: (ann: MikeEditAnnotation, filename: string) => void;
+    onViewClick?: (ann: GordonEditAnnotation, filename: string) => void;
     onResolveStart?: (args: {
         editId: string;
         documentId: string;
@@ -233,13 +233,13 @@ function EditCardsSection({
     onError,
 }: {
     pending: {
-        annotation: MikeEditAnnotation;
+        annotation: GordonEditAnnotation;
         filename: string;
     }[];
     filenameByDocId: Map<string, string>;
     cards: React.ReactNode[];
     resolvedCount: number;
-    onViewClick?: (ann: MikeEditAnnotation, filename: string) => void;
+    onViewClick?: (ann: GordonEditAnnotation, filename: string) => void;
     onResolveStart?: (args: {
         editId: string;
         documentId: string;
@@ -342,11 +342,11 @@ function ResponseStatus({ status }: { status: StatusState }) {
 
     return (
         <div className="w-full h-9 flex items-center mb-2">
-            <MikeIcon
+            <GordonIcon
                 spin={isActive}
                 done={showDone && doneVisible}
                 error={isError}
-                mike={!isError && !(showDone && doneVisible)}
+                gordon={!isError && !(showDone && doneVisible)}
                 size={22}
             />
         </div>
@@ -805,8 +805,8 @@ function DocEditedBlock({
 
 function preprocessCitations(
     text: string,
-    annotations: MikeCitationAnnotation[],
-    citationsList: MikeCitationAnnotation[],
+    annotations: GordonCitationAnnotation[],
+    citationsList: GordonCitationAnnotation[],
 ): string {
     // Replace [N] or [N, M, ...] inline markers with internal §idx§ tokens backed by annotations
     return text.replace(/\[(\d+(?:,\s*\d+)*)\]/g, (full, refsStr) => {
@@ -835,8 +835,8 @@ function MarkdownContent({
     divRef,
 }: {
     text: string;
-    citationsList: MikeCitationAnnotation[];
-    onCitationClick?: (c: MikeCitationAnnotation) => void;
+    citationsList: GordonCitationAnnotation[];
+    onCitationClick?: (c: GordonCitationAnnotation) => void;
     divRef?: React.RefObject<HTMLDivElement | null>;
 }) {
     return (
@@ -1010,13 +1010,13 @@ interface Props {
     events?: AssistantEvent[];
     isStreaming?: boolean;
     isError?: boolean;
-    /** Human-readable error text rendered alongside the red Mike icon. */
+    /** Human-readable error text rendered alongside the red Gordon icon. */
     errorMessage?: string;
-    annotations?: MikeCitationAnnotation[];
-    onCitationClick?: (citation: MikeCitationAnnotation) => void;
+    annotations?: GordonCitationAnnotation[];
+    onCitationClick?: (citation: GordonCitationAnnotation) => void;
     minHeight?: string;
     onWorkflowClick?: (workflowId: string) => void;
-    onEditViewClick?: (ann: MikeEditAnnotation, filename: string) => void;
+    onEditViewClick?: (ann: GordonEditAnnotation, filename: string) => void;
     /**
      * Opens the editor panel for a document without auto-highlighting any
      * specific edit. Used by the download card click — opening a doc to
@@ -1122,7 +1122,7 @@ export function AssistantMessage({
     // Pre-process citations for all content events. Each [N] marker resolves
     // to exactly one annotation (models are instructed to use shared refs
     // only for cross-page continuations via the [[PAGE_BREAK]] sentinel).
-    const citationsList: MikeCitationAnnotation[] = [];
+    const citationsList: GordonCitationAnnotation[] = [];
     const processedTexts: string[] = [];
     if (events) {
         for (const event of events) {
@@ -1415,7 +1415,7 @@ export function AssistantMessage({
                                     { type: "doc_edited" }
                                 >[];
                                 const pending: {
-                                    annotation: MikeEditAnnotation;
+                                    annotation: GordonEditAnnotation;
                                     filename: string;
                                 }[] = [];
                                 const filenameByDocId = new Map<
@@ -1423,7 +1423,7 @@ export function AssistantMessage({
                                     string
                                 >();
                                 // Effective status = external override if any, else the annotation's DB status.
-                                const statusOf = (ann: MikeEditAnnotation) =>
+                                const statusOf = (ann: GordonEditAnnotation) =>
                                     resolvedEditStatuses?.[ann.edit_id] ??
                                     ann.status;
                                 for (const e of editedEvents) {

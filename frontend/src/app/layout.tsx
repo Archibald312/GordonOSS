@@ -15,10 +15,10 @@ const ebGaramond = EB_Garamond({
 });
 
 export const metadata: Metadata = {
-    metadataBase: new URL("https://app.mikeoss.com"),
-    title: "Mike - AI Legal Platform",
+    metadataBase: new URL("https://app.gordonoss.com"),
+    title: "Gordon - AI Finance Platform",
     description:
-        "AI-powered legal document analysis and contract review platform.",
+        "Open-source, self-hostable AI platform for finance professionals — diligence, research, and audit-grade citation review.",
     icons: {
         icon: [
             { url: "/icon.svg", type: "image/svg+xml" },
@@ -28,25 +28,25 @@ export const metadata: Metadata = {
     },
     openGraph: {
         type: "website",
-        url: "https://app.mikeoss.com",
-        siteName: "Mike",
-        title: "Mike - AI Legal Platform",
+        url: "https://app.gordonoss.com",
+        siteName: "Gordon",
+        title: "Gordon - AI Finance Platform",
         description:
-            "AI-powered legal document analysis and contract review platform.",
+            "Open-source, self-hostable AI platform for finance professionals — diligence, research, and audit-grade citation review.",
         images: [
             {
                 url: "/link-image.jpg",
                 width: 1200,
                 height: 651,
-                alt: "Mike",
+                alt: "Gordon",
             },
         ],
     },
     twitter: {
         card: "summary_large_image",
-        title: "Mike - AI Legal Platform",
+        title: "Gordon - AI Finance Platform",
         description:
-            "AI-powered legal document analysis and contract review platform.",
+            "Open-source, self-hostable AI platform for finance professionals — diligence, research, and audit-grade citation review.",
         images: ["/link-image.jpg"],
     },
 };

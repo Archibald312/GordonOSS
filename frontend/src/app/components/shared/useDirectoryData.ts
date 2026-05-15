@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getProject, listProjects, listStandaloneDocuments } from "@/app/lib/mikeApi";
-import type { MikeDocument, MikeProject } from "./types";
+import { getProject, listProjects, listStandaloneDocuments } from "@/app/lib/gordonApi";
+import type { GordonDocument, GordonProject } from "./types";
 
 const CACHE_TTL_MS = 30_000;
 
 interface DirectoryCache {
-    standaloneDocuments: MikeDocument[];
-    projects: MikeProject[];
+    standaloneDocuments: GordonDocument[];
+    projects: GordonProject[];
     fetchedAt: number;
 }
 
@@ -20,8 +20,8 @@ export function invalidateDirectoryCache() {
 
 export function useDirectoryData(enabled: boolean) {
     const [loading, setLoading] = useState(true);
-    const [standaloneDocuments, setStandaloneDocuments] = useState<MikeDocument[]>([]);
-    const [projects, setProjects] = useState<MikeProject[]>([]);
+    const [standaloneDocuments, setStandaloneDocuments] = useState<GordonDocument[]>([]);
+    const [projects, setProjects] = useState<GordonProject[]>([]);
 
     useEffect(() => {
         if (!enabled) return;

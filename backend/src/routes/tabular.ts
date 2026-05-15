@@ -292,7 +292,7 @@ tabularRouter.post("/prompt", requireAuth, async (req, res) => {
         docNote +
         `\nExpected response format: ${formatHint}` +
         tagsNote +
-        `\n\nWrite the best extraction prompt for a legal tabular review column with this title. ` +
+        `\n\nWrite the best extraction prompt for a finance tabular review column with this title. The column may be asking for a contract provision, a financial metric, a date or period, a counterparty, or any other extractable fact from a finance document (10-K, 10-Q, credit agreement, indenture, CIM, IC memo, earnings transcript, etc.). ` +
         `Do NOT include any instruction about the response format in the prompt — ` +
         `format handling is applied separately and must not be duplicated inside the prompt text.`;
 
@@ -301,7 +301,7 @@ tabularRouter.post("/prompt", requireAuth, async (req, res) => {
         const raw = await completeText({
             model: title_model,
             systemPrompt:
-                'You write high-quality column prompts for legal tabular review workflows. Return only valid JSON with a single field: {"prompt": string}. The prompt you write must focus solely on what to extract — never on how to format the response.',
+                'You write high-quality column prompts for finance tabular review workflows. Return only valid JSON with a single field: {"prompt": string}. The prompt you write must focus solely on what to extract — never on how to format the response.',
             user: userMessage,
             maxTokens: 512,
             apiKeys: api_keys,
@@ -1130,9 +1130,9 @@ function buildTabularMessages(
         .map((c, i) => `- COL:${i} "${c.name}"`)
         .join("\n");
 
-    const systemContent = `You are Mike, an AI legal assistant. You are helping with the tabular review titled "${reviewTitle}".
+    const systemContent = `You are Gordon, an AI finance assistant. You are helping with the tabular review titled "${reviewTitle}".
 
-The review extracts specific fields from multiple legal documents into a structured table.
+The review extracts specific fields from multiple finance documents (contracts, filings, memos, models, transcripts) into a structured table.
 You do NOT have the cell content yet — call read_table_cells to fetch the cells you need before answering.
 
 DOCUMENTS (rows):
@@ -1438,7 +1438,7 @@ async function queryTabularCell(
     const suffix = formatPromptSuffix(format as never, tags);
     const fullPrompt = `${columnPrompt}${suffix} If not found, state "Not Found". Leave all reasoning and explanation in the "reasoning" field only.`;
 
-    const EXTRACTION_SYSTEM = `You are a legal document analyst. Return ONLY valid JSON:
+    const EXTRACTION_SYSTEM = `You are a finance document analyst. Return ONLY valid JSON:
 {"summary": string, "flag": "green"|"grey"|"yellow"|"red", "reasoning": string}
 
 The "summary" and "reasoning" field values may use markdown formatting (bullets, bold, italics, etc.) — the values are still plain JSON strings (escape newlines as \\n), but the text inside will be rendered as markdown in the UI.
@@ -1597,7 +1597,7 @@ async function queryTabularAllColumns(
         })
         .join("\n");
 
-    const SYSTEM = `You are a legal document analyst. Extract information for each column listed below.
+    const SYSTEM = `You are a finance document analyst. Extract information for each column listed below.
 
 For each column, output exactly one minified JSON object on its own line (no line breaks inside the JSON), then a newline. Process columns in order and output each result as soon as you finish it.
 
