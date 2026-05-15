@@ -63,7 +63,10 @@ export function assertFreeTierAllowed(input: FreeTierGuardInput): void {
     );
   }
 
-  const offenders = (input.documentFilenames ?? []).filter((f) => !allowlist.has(f));
+  const docFilenames = input.documentFilenames ?? [];
+  if (docFilenames.length === 0) return; // no documents — no data-privacy risk
+
+  const offenders = docFilenames.filter((f) => !allowlist.has(f));
   if (offenders.length > 0) {
     throw new Error(
       `Refusing to send non-fixture document(s) [${offenders.join(", ")}] to free-tier ` +
