@@ -545,6 +545,14 @@ export async function runLLMStream(params: {
 
     const selectedModel = resolveModel(model, DEFAULT_MAIN_MODEL);
 
+    const routingDocumentIds = Array.from(
+        new Set(
+            Object.values(docIndex)
+                .map((entry) => entry.document_id)
+                .filter((id): id is string => typeof id === "string" && id.length > 0),
+        ),
+    );
+
     await streamChatWithTools({
         model: selectedModel,
         systemPrompt,
@@ -558,6 +566,11 @@ export async function runLLMStream(params: {
             userEmail,
             projectId: projectId ?? null,
             db,
+        },
+        routing: {
+            db,
+            projectId: projectId ?? null,
+            documentIds: routingDocumentIds,
         },
         callbacks: {
             onContentDelta: (delta) => {

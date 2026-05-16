@@ -75,6 +75,24 @@ export type StreamChatParams = {
      * independently, so missing this only suppresses the llm_call row.
      */
     audit?: LlmAuditContext;
+    /**
+     * Optional per-source LLM routing context. When provided, the adapter
+     * consults `resolveModelRouting()` before dispatching and uses the
+     * resolved model in place of `params.model`. The resolution is recorded
+     * into `audit_log.routing_policy_applied` (when `audit` is also present).
+     * Today the resolver returns the caller's requested model unchanged in
+     * the common case — the seam exists so Phase 7 connectors and the
+     * post-launch local-inference adapter plug in without touching dispatch
+     * sites. See `backend/src/lib/llm/routing.ts` and decisions.md
+     * (2026-05-15).
+     */
+    routing?: LlmRoutingInput;
+};
+
+export type LlmRoutingInput = {
+    db: ReturnType<typeof createServerSupabase>;
+    projectId?: string | null;
+    documentIds?: string[];
 };
 
 export type LlmAuditContext = {

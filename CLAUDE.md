@@ -41,21 +41,23 @@ For any new feature, ask first: where is the LLM actually needed? Then minimize 
 
 ## Build plan (Phase 4 → 14)
 
-Original plan: `~/Downloads/build-plan.md` (Phases 0–3 complete). Revised order:
+Original plan: `~/Downloads/build-plan.md` (Phases 0–3 complete). Revised order (local inference deferred post-launch; see 2026-05-15 decision in `decisions.md`):
 
 | Phase | Focus |
 |---|---|
 | 4 | Domain swap (legal → finance copy, prompts, workflows) |
 | 5 | Excel I/O (xlsx ingestion + emission with cell-level citation comments) |
 | 6 | Audit logging |
-| 7 | Local inference (Ollama/vLLM) + per-source LLM routing |
-| 8 | Connector framework + EDGAR (Tier 1 reference) |
-| 9 | **Cross-doc consistency check + birth of `backend/src/lib/extractors/`** (numbers, entities, periods, factTuples) |
-| 10 | Defined-terms hover (extractor + Aho-Corasick + UI; zero LLM in hot path) |
-| 11 | Finance workflow library (CIM, comps, IC memo, covenant, earnings, KPI, market map) |
-| 12 | Google Drive + Capital IQ connectors |
-| 13 | Postgres Row Level Security |
-| 14 | Polish + launch |
+| 7 | Connector framework + EDGAR (Tier 1 reference) |
+| 8 | **Cross-doc consistency check + birth of `backend/src/lib/extractors/`** (numbers, entities, periods, factTuples) |
+| 9 | Defined-terms hover (extractor + Aho-Corasick + UI; zero LLM in hot path) |
+| 10 | Finance workflow library (CIM, comps, IC memo, covenant, earnings, KPI, market map) |
+| 11 | Google Drive + Capital IQ connectors |
+| 12 | Postgres Row Level Security |
+| 13 | Polish + launch |
+| 14 | (post-launch) Local inference (Ollama/vLLM) adapter + activation of routing policy |
+
+**Pre-Phase-7 seam (landed early, see `decisions.md` 2026-05-15 entry):** per-source LLM routing — `documents.model_preference` + `projects.model_preference` columns, `backend/src/lib/llm/routing.ts` resolver, and `streamChatWithTools` records the resolution into the existing `audit_log.routing_policy_applied` column. Today the resolver returns the requested model unchanged. Phase 7 connectors populate `model_preference` at ingest; Phase 14 wires the local-inference adapter into the same resolver without further dispatch-site changes. This is why local inference (originally Phase 7) is cheap to add later: the load-bearing decision surface already exists.
 
 ## Future capabilities (not yet scheduled into a phase)
 
@@ -63,7 +65,7 @@ These are confirmed-desired features that don't warrant a dedicated phase. Fold 
 
 - **Editable XlsxView formula bar / cells.** Today the formula bar in `frontend/src/app/components/shared/XlsxView.tsx` is read-only. Making cells editable requires: write-through to ExcelJS → repackage workbook → POST a new document version (reusing the existing version-upload route) → invalidate the bytes cache → reconcile against any pending tracked changes on sibling docx documents in the same chat. Roughly half a day. Defer until a workflow needs it (likely surfaces during Phase 11 CIM/comps workflows).
 - **Server-side `generate_xlsx` LLM tool.** Phase 5 ships read + cite + comment-on-export. The deferred half is letting the LLM author a workbook from scratch (e.g. "build me a comps table") with cell-level citations baked into ExcelJS comments. Pair with Phase 11 finance workflows.
-- **Data-privacy tier guard for LLM dispatch.** The original `lib/llm/freeTierGuard.ts` was removed because it kept blocking real dev work against free-tier Gemini; the right design is to gate on *data sensitivity* rather than model tier (a per-project flag like `data_class = "public" | "internal" | "customer"`, with the model-tier list as one input among many). Reintroduce when the connector framework (Phase 8) gives us a clear pull of "what classifies as customer data."
+- **Data-privacy tier guard for LLM dispatch.** The original `lib/llm/freeTierGuard.ts` was removed because it kept blocking real dev work against free-tier Gemini; the right design is to gate on *data sensitivity* rather than model tier (a per-project flag like `data_class = "public" | "internal" | "customer"`, with the model-tier list as one input among many). Reintroduce when the connector framework (Phase 7) gives us a clear pull of "what classifies as customer data." The routing seam at `backend/src/lib/llm/routing.ts` is the natural home for it — add a `block` outcome to the resolver alongside the `model` it returns.
 
 ## Things to remember across sessions
 

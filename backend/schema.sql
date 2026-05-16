@@ -73,6 +73,7 @@ create table if not exists public.projects (
   cm_number text,
   visibility text not null default 'private',
   shared_with jsonb not null default '[]'::jsonb,
+  model_preference text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -107,6 +108,7 @@ create table if not exists public.documents (
   structure_tree jsonb,
   status text not null default 'pending',
   folder_id uuid references public.project_subfolders(id) on delete set null,
+  model_preference text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -365,6 +367,14 @@ revoke all on public.tabular_cells from anon, authenticated;
 revoke all on public.tabular_review_chats from anon, authenticated;
 revoke all on public.tabular_review_chat_messages from anon, authenticated;
 revoke all on public.user_api_keys from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Per-source LLM routing seam (pre-Phase-7)
+-- ---------------------------------------------------------------------------
+--
+-- See backend/migrations/model_routing_seam.sql and decisions.md (2026-05-15).
+-- model_preference columns on projects + documents are declared inline above;
+-- the resolver lives at backend/src/lib/llm/routing.ts.
 
 -- ---------------------------------------------------------------------------
 -- Audit log (Phase 6)
