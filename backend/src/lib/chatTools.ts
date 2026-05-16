@@ -416,6 +416,7 @@ export async function runLLMStream(params: {
     docStore: DocStore;
     docIndex: DocIndex;
     userId: string;
+    userEmail?: string;
     db: ReturnType<typeof createServerSupabase>;
     write: (s: string) => void;
     workflowStore?: WorkflowStore;
@@ -435,6 +436,7 @@ export async function runLLMStream(params: {
         docStore,
         docIndex,
         userId,
+        userEmail,
         db,
         write,
         workflowStore,
@@ -453,6 +455,7 @@ export async function runLLMStream(params: {
 
     const toolCtx: ToolContext = {
         userId,
+        userEmail,
         db,
         docStore,
         docIndex,
@@ -550,6 +553,12 @@ export async function runLLMStream(params: {
         maxIterations: 10,
         apiKeys,
         enableThinking: true,
+        audit: {
+            userId,
+            userEmail,
+            projectId: projectId ?? null,
+            db,
+        },
         callbacks: {
             onContentDelta: (delta) => {
                 iterText += delta;

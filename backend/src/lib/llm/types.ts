@@ -1,3 +1,5 @@
+import type { createServerSupabase } from "../supabase";
+
 // Shared types for the LLM provider adapter.
 // Callers always speak OpenAI-style tools + { role, content } messages; each
 // provider translates internally.
@@ -65,6 +67,21 @@ export type StreamChatParams = {
      * the reintroduction plan).
      */
     documentFilenames?: string[];
+    /**
+     * Optional audit metadata. When provided, the LLM adapter records one
+     * audit_log row per streamChatWithTools call (success or error). Omit in
+     * call sites that have no user context (rare — most callers should pass
+     * it through). The tool dispatcher logs its own tool_call rows
+     * independently, so missing this only suppresses the llm_call row.
+     */
+    audit?: LlmAuditContext;
+};
+
+export type LlmAuditContext = {
+    userId: string;
+    userEmail?: string;
+    projectId?: string | null;
+    db: ReturnType<typeof createServerSupabase>;
 };
 
 export type StreamChatResult = {

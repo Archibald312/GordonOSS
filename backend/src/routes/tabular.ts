@@ -944,6 +944,13 @@ tabularRouter.post("/:reviewId/generate", requireAuth, async (req, res) => {
                             );
                         },
                         api_keys,
+                        {
+                            userId,
+                            userEmail,
+                            projectId:
+                                (review.project_id as string | null) ?? null,
+                            db,
+                        },
                     );
                 } catch (err) {
                     console.error(
@@ -1321,6 +1328,7 @@ tabularRouter.post("/:reviewId/chat", requireAuth, async (req, res) => {
             docStore: new Map(),
             docIndex: {},
             userId,
+            userEmail,
             db,
             write,
             tabularStore,
@@ -1588,6 +1596,7 @@ async function queryTabularAllColumns(
     columns: Column[],
     onResult: (columnIndex: number, result: CellResult) => Promise<void>,
     apiKeys?: import("../lib/llm").UserApiKeys,
+    audit?: import("../lib/llm").LlmAuditContext,
 ): Promise<void> {
     const columnsDesc = columns
         .map((col) => {
@@ -1650,6 +1659,7 @@ Rules:
             messages: [{ role: "user", content: USER }],
             tools: [],
             apiKeys,
+            audit,
             callbacks: {
                 onContentDelta: (delta) => {
                     contentBuffer += delta;
