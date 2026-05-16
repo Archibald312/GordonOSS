@@ -66,7 +66,7 @@ export async function resolveModelRouting(
         (id): id is string => typeof id === "string" && id.length > 0,
     );
 
-    let documentPrefs: Array<{ documentId: string; modelPreference: string }> = [];
+    const documentPrefs: Array<{ documentId: string; modelPreference: string }> = [];
     if (documentIds.length > 0) {
         const { data, error } = await ctx.db
             .from("documents")
