@@ -39,3 +39,25 @@ Per `CLAUDE.md`: "When deviating from the plan, record the decision in `decision
 7. **Document-row upload path:** `ALLOWED_TYPES` extends to include the four new suffixes. Spreadsheets skip the DOCX→PDF conversion (no PDF rendition is created). `extractStructureTree` returns the sheet list as level-1 nodes so the existing outline UI displays sheet names. `pageCount` is left `null` for spreadsheets — pages don't apply.
 
 **Verification:** backend `tsc --noEmit` clean; backend Vitest 69/69 passing (10 new extractor tests).
+
+## 2026-05-15 — Deferring local inference; building per-source routing seam early
+
+**Change vs. the original plan:**
+
+1. **Phase 7 (local inference: Ollama/vLLM) deferred to post-launch.** Reason: there are no external users on the platform yet and the maintainer can't run local models on the dev machine, so building a code path that can't be exercised is speculative. The LLM adapter layer already abstracts Claude/Gemini/OpenAI behind a single interface (`backend/src/lib/llm/{claude,gemini,openai}.ts` + `index.ts`), so adding a fourth adapter later is a day's work — not architecturally load-bearing.
+
+2. **Per-source LLM routing seam built now, before Phase 8 connectors.** Reason: the *adapter* is cheap to add later, but the *routing policy* surface (deciding which model handles content from which source) is the part that gets baked into call sites and connector code. If Phase 8 ships connectors assuming "one model per chat/project," retrofitting per-source routing later means touching every connector, every dispatch path, and probably the audit row shape — exactly the kind of cross-cutting churn that becomes real tech debt. So we land the seam (column + resolver + audit field) ahead of the connector framework. Today the resolver returns the user's requested model unchanged; tomorrow it consults the policy.
+
+**Scope of the seam (this work, branch `phase-pre8-model-routing-seam`):**
+
+- `documents.model_preference text` (nullable). Connector-imported docs in Phase 8 will populate this at ingest from the connector's declared preference. Manually-uploaded docs leave it null.
+- `projects.model_preference text` (nullable). Project-level override.
+- `backend/src/lib/llm/routing.ts` exports `resolveModelRouting(ctx, requestedModel)` returning `{ model, policy }`. Precedence: any document-level preference (first non-null wins, conflicts recorded in `policy.conflicts`) → project-level → requested. The function is pure DB-read + decision; no LLM call.
+- `streamChatWithTools` accepts an optional `routing?` context. When present, it resolves the model before dispatch and records the resolution into the existing `audit_log.routing_policy_applied jsonb` column (already shipped in Phase 6). When absent, behavior is identical to today (no resolution, no policy row).
+- No UI exposed for `model_preference` yet — there are no users to expose it to. Setting it is a SQL/admin-API job until Phase 14 polish or whenever a workflow needs it.
+
+**What we explicitly are NOT building now:** the local-inference adapter, the policy admin UI, a separate `routing_policies` table, or per-document-type routing (PDF vs xlsx vs ingested-from-X). Those are all post-Phase-14 if ever.
+
+**Renumbering:** Phase 7 = Connector framework + EDGAR (was 8). Each subsequent phase shifts up by one. Local inference + adapter lands as Phase 15 post-launch. CLAUDE.md updated to match.
+
+**Verification:** backend `tsc --noEmit` clean; backend Vitest passing (resolver tests added).
