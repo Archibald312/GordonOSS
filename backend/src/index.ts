@@ -12,6 +12,7 @@ import { tabularRouter } from "./routes/tabular";
 import { workflowsRouter } from "./routes/workflows";
 import { userRouter } from "./routes/user";
 import { downloadsRouter } from "./routes/downloads";
+import { auditRouter } from "./routes/audit";
 
 try {
   encryptionKey();
@@ -126,6 +127,7 @@ app.use("/workflows", workflowsRouter);
 app.use("/user", userRouter);
 app.use("/users", userRouter);
 app.use("/download", downloadsRouter);
+app.use("/audit-log", auditRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

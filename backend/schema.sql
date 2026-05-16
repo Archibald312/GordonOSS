@@ -365,3 +365,67 @@ revoke all on public.tabular_cells from anon, authenticated;
 revoke all on public.tabular_review_chats from anon, authenticated;
 revoke all on public.tabular_review_chat_messages from anon, authenticated;
 revoke all on public.user_api_keys from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Audit log (Phase 6)
+-- ---------------------------------------------------------------------------
+--
+-- Append-only record of LLM calls, tool invocations, and connector fetches.
+-- See backend/migrations/audit_log.sql for the canonical migration and the
+-- rationale for immutability + denormalized user_email.
+
+create table if not exists public.audit_log (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete set null,
+  user_email text,
+  event_type text not null check (event_type in (
+    'llm_call',
+    'tool_call',
+    'connector_fetch',
+    'document_upload',
+    'document_download'
+  )),
+  model text,
+  provider text,
+  tool_name text,
+  connector_id text,
+  project_id uuid references public.projects(id) on delete set null,
+  document_ids uuid[],
+  source_license_scopes text[],
+  routing_policy_applied jsonb,
+  input_hash text,
+  output_hash text,
+  input_tokens integer,
+  output_tokens integer,
+  duration_ms integer,
+  status text not null check (status in ('success', 'error', 'blocked')),
+  error_message text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_audit_log_user_created
+  on public.audit_log(user_id, created_at desc);
+
+create index if not exists idx_audit_log_project_created
+  on public.audit_log(project_id, created_at desc)
+  where project_id is not null;
+
+create index if not exists idx_audit_log_event_type
+  on public.audit_log(event_type);
+
+create or replace function public.prevent_audit_log_modification()
+returns trigger as $$
+begin
+  raise exception 'audit_log entries are immutable';
+end;
+$$ language plpgsql;
+
+drop trigger if exists audit_log_no_update on public.audit_log;
+create trigger audit_log_no_update before update on public.audit_log
+  for each row execute procedure public.prevent_audit_log_modification();
+
+drop trigger if exists audit_log_no_delete on public.audit_log;
+create trigger audit_log_no_delete before delete on public.audit_log
+  for each row execute procedure public.prevent_audit_log_modification();
+
+revoke all on public.audit_log from anon, authenticated;
