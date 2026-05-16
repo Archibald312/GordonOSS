@@ -4,11 +4,11 @@ import { createAndLoginTestUser } from "./helpers/auth";
 
 const SAMPLE_PDF = resolve(__dirname, "fixtures", "sample.pdf");
 
-// Tabular extraction depends on a real LLM provider.  The backend's
-// `tabular_model` defaults to `gemini-3-flash-preview`, which is on the
-// free-tier list in `backend/src/lib/llm/freeTierGuard.ts`.  The test env
-// sets ALLOW_FREE_TIER_LLM=true and FREE_TIER_FIXTURE_ALLOWLIST=sample.pdf,
-// so the call routes to Gemini's free tier on the public-domain fixture.
+// Tabular extraction depends on a real LLM provider. The backend's
+// `tabular_model` defaults to `gemini-3-flash-preview`. The free-tier guard
+// was removed (see CLAUDE.md "Future capabilities" for the planned
+// reintroduction); the test calls Gemini directly on the public-domain
+// fixture.
 
 async function createProjectAndOpen(page: Page, name: string) {
   await page.goto("/projects");

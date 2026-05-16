@@ -72,25 +72,16 @@ The generator script is at `scripts/generate-sample-pdf.mjs`.
 | [`chat.spec.ts`](./chat.spec.ts) | ask a question about an uploaded PDF and verify a streamed answer with a `[1]` citation marker arrives | **Requires real LLM API keys** — see below |
 | [`tabular.spec.ts`](./tabular.spec.ts) | create a 2-column review (Topic / Number of pages), add `sample.pdf`, click Generate, verify cells populate with citations | **Requires real LLM API keys** — see below |
 
-## LLM-dependent specs (`chat`, `tabular`) — free-tier Gemini only
+## LLM-dependent specs (`chat`, `tabular`) — free-tier Gemini
 
-`chat.spec.ts` and `tabular.spec.ts` need a real LLM call. We use **Gemini's free tier with Flash-Lite** (`gemini-2.5-flash-lite`), and only against the committed public-domain fixture `sample.pdf`. Free-tier providers may log or train on inputs, so they must **never** see customer documents.
+`chat.spec.ts` and `tabular.spec.ts` need a real LLM call. We use **Gemini's free tier with Flash-Lite** (`gemini-2.5-flash-lite`), and only against the committed public-domain fixture `sample.pdf`.
 
-### Safety guard
-
-The backend (`src/lib/llm/freeTierGuard.ts`) refuses to call any free-tier model unless:
-
-1. `ALLOW_FREE_TIER_LLM=true` is explicitly set, and
-2. `FREE_TIER_FIXTURE_ALLOWLIST` lists the fixture filenames that may be processed, and
-3. every document filename passed to the LLM call appears in that allowlist.
-
-Production and the dev DB **must** leave `ALLOW_FREE_TIER_LLM` unset (or set to anything other than `true`). With that, any accidental free-tier call throws immediately.
+> **Note:** the free-tier guard (`backend/src/lib/llm/freeTierGuard.ts`) was removed. Calls now route directly based on the model ID. A data-privacy tier guard is on the roadmap — see CLAUDE.md "Future capabilities". Until then, **do not point dev or staging at customer documents** while using a free-tier model.
 
 ### Setup
 
 1. Grab a free Gemini API key at <https://aistudio.google.com/app/apikey>.
 2. Paste it into `backend/.env.test` under `GEMINI_API_KEY`.
-3. Leave `ALLOW_FREE_TIER_LLM=true` and `FREE_TIER_FIXTURE_ALLOWLIST=sample.pdf,test-cim.pdf` as configured.
 
 Free-tier limits (as of writing): 15 requests/min for Flash-Lite, well within what the e2e suite needs. Each `chat` run does ~1 LLM call; `tabular` does ~3 (one per cell × 2 columns × 1 row, with retries).
 

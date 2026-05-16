@@ -11,11 +11,10 @@ import { existsSync } from "node:fs";
  * frontend's base URL.
  *
  * Test env is loaded from backend/.env.test so a single file feeds both
- * vitest (backend unit tests) and these e2e tests.  All vars in that
- * file — Supabase keys, NEXT_PUBLIC_* for the frontend, Gemini key,
- * ALLOW_FREE_TIER_LLM, FREE_TIER_FIXTURE_ALLOWLIST — are passed into
- * each webServer process so the dev servers point at the test Supabase
- * project instead of dev.
+ * vitest (backend unit tests) and these e2e tests. All vars in that file
+ * — Supabase keys, NEXT_PUBLIC_* for the frontend, Gemini key — are
+ * passed into each webServer process so the dev servers point at the
+ * test Supabase project instead of dev.
  *
  * See e2e/README.md for setup details.
  */

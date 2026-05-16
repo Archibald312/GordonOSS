@@ -54,6 +54,16 @@ export async function docxToPdf(buffer: Buffer): Promise<Buffer> {
   return convert(normalized, ".pdf", undefined);
 }
 
+/**
+ * Convert a legacy .xls (BIFF) buffer to modern .xlsx via LibreOffice so the
+ * rest of the pipeline only has to deal with one spreadsheet parser (ExcelJS).
+ * Throws if LibreOffice is not installed or conversion fails.
+ */
+export async function xlsToXlsx(buffer: Buffer): Promise<Buffer> {
+  const convert = await getConvert();
+  return convert(buffer, ".xlsx", undefined);
+}
+
 export function convertedPdfKey(userId: string, docId: string): string {
   return `converted-pdfs/${userId}/${docId}.pdf`;
 }

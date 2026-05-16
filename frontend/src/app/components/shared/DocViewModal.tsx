@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Download, Trash2, X } from "lucide-react";
 import { DocView } from "./DocView";
+import { XlsxView } from "./XlsxView";
 import { getDocumentUrl } from "@/app/lib/gordonApi";
 import type { GordonDocument } from "./types";
 
@@ -86,13 +87,22 @@ export function DocViewModal({
                     PDF rendition. Passing no versionId tells the backend
                     to resolve the latest tracked-changes version. */}
                 <div className="flex flex-col flex-1 overflow-hidden px-3 pb-3">
-                    <DocView
-                        key={versionId ?? "current"}
-                        doc={{
-                            document_id: doc.id,
-                            version_id: versionId ?? null,
-                        }}
-                    />
+                    {doc.file_type === "xlsx" || doc.file_type === "csv" ? (
+                        <XlsxView
+                            key={versionId ?? "current"}
+                            documentId={doc.id}
+                            versionId={versionId ?? null}
+                            fileType={doc.file_type}
+                        />
+                    ) : (
+                        <DocView
+                            key={versionId ?? "current"}
+                            doc={{
+                                document_id: doc.id,
+                                version_id: versionId ?? null,
+                            }}
+                        />
+                    )}
                 </div>
             </div>
         </div>,

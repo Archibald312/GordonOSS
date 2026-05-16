@@ -57,6 +57,14 @@ Original plan: `~/Downloads/build-plan.md` (Phases 0–3 complete). Revised orde
 | 13 | Postgres Row Level Security |
 | 14 | Polish + launch |
 
+## Future capabilities (not yet scheduled into a phase)
+
+These are confirmed-desired features that don't warrant a dedicated phase. Fold them into the closest in-progress phase when the surrounding work makes the marginal cost low, or batch into Phase 14 polish.
+
+- **Editable XlsxView formula bar / cells.** Today the formula bar in `frontend/src/app/components/shared/XlsxView.tsx` is read-only. Making cells editable requires: write-through to ExcelJS → repackage workbook → POST a new document version (reusing the existing version-upload route) → invalidate the bytes cache → reconcile against any pending tracked changes on sibling docx documents in the same chat. Roughly half a day. Defer until a workflow needs it (likely surfaces during Phase 11 CIM/comps workflows).
+- **Server-side `generate_xlsx` LLM tool.** Phase 5 ships read + cite + comment-on-export. The deferred half is letting the LLM author a workbook from scratch (e.g. "build me a comps table") with cell-level citations baked into ExcelJS comments. Pair with Phase 11 finance workflows.
+- **Data-privacy tier guard for LLM dispatch.** The original `lib/llm/freeTierGuard.ts` was removed because it kept blocking real dev work against free-tier Gemini; the right design is to gate on *data sensitivity* rather than model tier (a per-project flag like `data_class = "public" | "internal" | "customer"`, with the model-tier list as one input among many). Reintroduce when the connector framework (Phase 8) gives us a clear pull of "what classifies as customer data."
+
 ## Things to remember across sessions
 
 - Run one phase at a time. Verify acceptance criteria before starting the next.

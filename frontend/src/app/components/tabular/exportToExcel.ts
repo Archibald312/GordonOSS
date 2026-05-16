@@ -2,20 +2,40 @@
 
 import ExcelJS from "exceljs";
 import type { ColumnConfig, GordonDocument, TabularCell } from "../shared/types";
-import { preprocessCitations } from "./citation-utils";
+import { preprocessCitations, type ParsedCitation } from "./citation-utils";
 
-function formatCellForExport(cell: TabularCell | undefined): string {
-    if (!cell) return "";
-    if (cell.status === "pending" || cell.status === "generating") return "";
-    if (cell.status === "error") return "Error";
+interface FormattedCell {
+    text: string;
+    citations: ParsedCitation[];
+}
+
+function formatCellForExport(cell: TabularCell | undefined): FormattedCell {
+    if (!cell) return { text: "", citations: [] };
+    if (cell.status === "pending" || cell.status === "generating") {
+        return { text: "", citations: [] };
+    }
+    if (cell.status === "error") return { text: "Error", citations: [] };
     const summary = cell.content?.summary;
-    if (!summary) return "";
-    const { processed } = preprocessCitations(summary);
-    return processed
+    if (!summary) return { text: "", citations: [] };
+    const { processed, citations } = preprocessCitations(summary);
+    const text = processed
         .replace(/§\d+§/g, "")
         .replace(/\[\[([^\]]+)\]\]/g, "$1")
         .replace(/[ \t]+/g, " ")
         .trim();
+    return { text, citations };
+}
+
+function buildCommentText(
+    citations: ParsedCitation[],
+    docFilename: string,
+): string {
+    return citations
+        .map((c, i) => {
+            const quote = c.quote.length > 240 ? `${c.quote.slice(0, 240)}…` : c.quote;
+            return `[${i + 1}] ${docFilename} — Page ${c.page}\n  "${quote}"`;
+        })
+        .join("\n\n");
 }
 
 function sanitizeFilename(name: string): string {
@@ -58,12 +78,26 @@ export async function exportTabularReviewToExcel(params: {
     };
 
     for (const doc of documents) {
-        const row: string[] = [doc.filename];
-        for (const col of sortedCols) {
-            row.push(formatCellForExport(cellMap.get(`${doc.id}:${col.index}`)));
-        }
+        const formattedCols = sortedCols.map((col) =>
+            formatCellForExport(cellMap.get(`${doc.id}:${col.index}`)),
+        );
+        const row: string[] = [doc.filename, ...formattedCols.map((f) => f.text)];
         const excelRow = ws.addRow(row);
         excelRow.alignment = { vertical: "top", wrapText: true };
+
+        // Attach per-cell ExcelJS comments containing the citation list. This
+        // is the audit trail: every claim in a tabular review cell can be
+        // traced back to the source document + page + verbatim quote without
+        // leaving Excel.
+        formattedCols.forEach((f, i) => {
+            if (!f.citations.length) return;
+            const comment = buildCommentText(f.citations, doc.filename);
+            const excelCell = excelRow.getCell(i + 2); // +1 for 1-indexing, +1 for the Document column
+            excelCell.note = {
+                texts: [{ text: comment }],
+                margins: { insetmode: "auto" },
+            };
+        });
     }
 
     const buf = await wb.xlsx.writeBuffer();

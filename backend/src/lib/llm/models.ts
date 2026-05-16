@@ -6,6 +6,7 @@ import type { Provider } from "./types";
 // Main-chat tier (top-end) — user picks one of these per message.
 export const CLAUDE_MAIN_MODELS = ["claude-opus-4-7", "claude-sonnet-4-6"] as const;
 export const GEMINI_MAIN_MODELS = [
+    "gemma-4-31b-it",         // Gemma 4 31B — higher free-tier quota than Gemini Flash
     "gemini-3.1-pro-preview",
     "gemini-3-flash-preview",
 ] as const;
@@ -13,18 +14,18 @@ export const OPENAI_MAIN_MODELS = ["gpt-5.5", "gpt-5.4-mini"] as const;
 
 // Mid-tier (used for tabular review) — user picks one in account settings.
 export const CLAUDE_MID_MODELS = ["claude-sonnet-4-6"] as const;
-export const GEMINI_MID_MODELS = ["gemini-3-flash-preview"] as const;
+export const GEMINI_MID_MODELS = ["gemma-4-31b-it", "gemini-3-flash-preview"] as const;
 export const OPENAI_MID_MODELS = ["gpt-5.4-mini"] as const;
 
 // Low-tier (used for title generation, lightweight extractions) — user picks
 // one in account settings.
 export const CLAUDE_LOW_MODELS = ["claude-haiku-4-5"] as const;
-export const GEMINI_LOW_MODELS = ["gemini-3.1-flash-lite-preview"] as const;
+export const GEMINI_LOW_MODELS = ["gemma-4-31b-it", "gemini-3.1-flash-lite-preview"] as const;
 export const OPENAI_LOW_MODELS = ["gpt-5.4-nano"] as const;
 
-export const DEFAULT_MAIN_MODEL = "gemini-3-flash-preview";
-export const DEFAULT_TITLE_MODEL = "gemini-3.1-flash-lite-preview";
-export const DEFAULT_TABULAR_MODEL = "gemini-3-flash-preview";
+export const DEFAULT_MAIN_MODEL = "gemma-4-31b-it";
+export const DEFAULT_TITLE_MODEL = "gemma-4-31b-it";
+export const DEFAULT_TABULAR_MODEL = "gemma-4-31b-it";
 
 const ALL_MODELS = new Set<string>([
     ...CLAUDE_MAIN_MODELS,
@@ -44,7 +45,7 @@ const ALL_MODELS = new Set<string>([
 
 export function providerForModel(model: string): Provider {
     if (model.startsWith("claude")) return "claude";
-    if (model.startsWith("gemini")) return "gemini";
+    if (model.startsWith("gemini") || model.startsWith("gemma")) return "gemini";
     if (model.startsWith("gpt-")) return "openai";
     throw new Error(`Unknown model id: ${model}`);
 }

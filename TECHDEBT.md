@@ -193,8 +193,9 @@ through the same modal flow as the documents spec, (3) navigate to
 creates a chat and redirects to `/projects/{id}/assistant/chat/{chatId}`,
 (5) submit a question via the textarea, (6) wait for `citation-marker`
 to render inside the streamed assistant response.  Default model
-(`gemini-3-flash-preview`) is on the free-tier allowlist in
-`backend/src/lib/llm/freeTierGuard.ts`, so no model toggle is needed.
+(`gemini-3-flash-preview`) routes straight to Gemini — the free-tier
+guard was removed (see CLAUDE.md "Future capabilities"), so no env
+toggles are needed.
 Setup gotcha: the original `GEMINI_API_KEY` in `.env.test` had expired
 ("API_KEY_INVALID") — rotate at <https://aistudio.google.com/app/apikey>
 when the test starts failing with a 400 from googleapis.  1/1 green

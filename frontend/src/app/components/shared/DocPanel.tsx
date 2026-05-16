@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { applyOptimisticResolution } from "../assistant/EditCard";
 import { DocView } from "./DocView";
 import { DocxView } from "./DocxView";
+import { XlsxView } from "./XlsxView";
 import {
     displayCitationQuote,
     expandCitationToEntries,
@@ -20,6 +21,13 @@ import type {
 function isDocxFilename(name: string): boolean {
     const ext = name.split(".").pop()?.toLowerCase();
     return ext === "docx" || ext === "doc";
+}
+
+function spreadsheetExt(name: string): "xlsx" | "csv" | null {
+    const ext = name.split(".").pop()?.toLowerCase();
+    if (ext === "xlsx" || ext === "xls" || ext === "xlsm") return "xlsx";
+    if (ext === "csv") return "csv";
+    return null;
 }
 
 /**
@@ -98,6 +106,7 @@ export function DocPanel({
     // re-fetch every time they toggle. Tracked-change rendering still
     // only lives in DocxView, which is fine because edits are DOCX-only.
     const useDocxView = isDocxFilename(filename);
+    const xlsxKind = spreadsheetExt(filename);
 
     const quotes: CitationQuote[] | undefined = useMemo(() => {
         if (mode.kind !== "citation") return undefined;
@@ -154,7 +163,14 @@ export function DocPanel({
                 </div>
             )}
 
-            {useDocxView ? (
+            {xlsxKind ? (
+                <XlsxView
+                    documentId={documentId}
+                    versionId={versionId ?? undefined}
+                    fileType={xlsxKind}
+                    quotes={quotes}
+                />
+            ) : useDocxView ? (
                 <DocxView
                     documentId={documentId}
                     versionId={versionId ?? undefined}

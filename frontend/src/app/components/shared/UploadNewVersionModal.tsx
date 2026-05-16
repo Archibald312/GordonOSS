@@ -52,7 +52,14 @@ export function UploadNewVersionModal({ open, onClose, doc, onSubmit }: Props) {
 
     if (!open || !doc) return null;
 
-    const accept = doc.file_type === "pdf" ? ".pdf" : ".docx,.doc";
+    const accept =
+        doc.file_type === "pdf"
+            ? ".pdf"
+            : doc.file_type === "xlsx"
+              ? ".xlsx,.xls,.xlsm"
+              : doc.file_type === "csv"
+                ? ".csv"
+                : ".docx,.doc";
 
     function handleFilePick(e: React.ChangeEvent<HTMLInputElement>) {
         const file = e.target.files?.[0] ?? null;

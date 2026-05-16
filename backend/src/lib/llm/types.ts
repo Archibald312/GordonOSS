@@ -60,8 +60,9 @@ export type StreamChatParams = {
     enableThinking?: boolean;
     /**
      * Filenames of any documents whose content will be embedded in this LLM
-     * call. Used by the free-tier guard (lib/llm/freeTierGuard.ts) to refuse
-     * sending non-fixture documents to free-tier providers.
+     * call. Reserved for a future data-privacy tier guard (the original
+     * free-tier block was removed — see CLAUDE.md "Future capabilities" for
+     * the reintroduction plan).
      */
     documentFilenames?: string[];
 };

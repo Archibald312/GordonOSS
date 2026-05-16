@@ -42,6 +42,7 @@ import { ProjectExplorer } from "@/app/components/projects/ProjectExplorer";
 import { DocView } from "@/app/components/shared/DocView";
 import { OwnerOnlyModal } from "@/app/components/shared/OwnerOnlyModal";
 import { DocxView } from "@/app/components/shared/DocxView";
+import { XlsxView } from "@/app/components/shared/XlsxView";
 import { GordonIcon } from "@/components/chat/gordon-icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -82,6 +83,13 @@ type EditScrollTarget = {
 function isDocxTab(filename: string) {
     const ext = filename.split(".").pop()?.toLowerCase();
     return ext === "docx" || ext === "doc";
+}
+
+function spreadsheetTabKind(filename: string): "xlsx" | "csv" | null {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    if (ext === "xlsx" || ext === "xls" || ext === "xlsm") return "xlsx";
+    if (ext === "csv") return "csv";
+    return null;
 }
 
 const ICON_SIZE = 30;
@@ -863,7 +871,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                                     <input
                                         ref={fileInputRef}
                                         type="file"
-                                        accept=".pdf,.docx,.doc"
+                                        accept=".pdf,.docx,.doc,.xlsx,.xls,.xlsm,.csv"
                                         multiple
                                         className="hidden"
                                         onChange={(e) =>
@@ -1054,7 +1062,18 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                     </div>
                     <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                         {activeTab ? (
-                            isDocxTab(activeTab.filename) ? (
+                            spreadsheetTabKind(activeTab.filename) ? (
+                                <XlsxView
+                                    key={activeTab.documentId}
+                                    documentId={activeTab.documentId}
+                                    versionId={activeTab.versionId}
+                                    fileType={spreadsheetTabKind(
+                                        activeTab.filename,
+                                    )}
+                                    quotes={activeQuotes ?? undefined}
+                                    refetchKey={activeTab.refetchKey}
+                                />
+                            ) : isDocxTab(activeTab.filename) ? (
                                 <DocxView
                                     key={activeTab.documentId}
                                     documentId={activeTab.documentId}

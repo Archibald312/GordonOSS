@@ -10,7 +10,9 @@ import {
   uploadFile,
   versionStorageKey,
 } from "../lib/storage";
-import { docxToPdf, convertedPdfKey } from "../lib/convert";
+import { docxToPdf, convertedPdfKey, xlsToXlsx } from "../lib/convert";
+import { extractXlsx } from "../lib/extractors/xlsx";
+import { extractCsv } from "../lib/extractors/csv";
 import {
   extractTrackedChangeIds,
   resolveTrackedChange,
@@ -25,7 +27,8 @@ import { ensureDocAccess } from "../lib/access";
 import { singleFileUpload } from "../lib/upload";
 
 export const documentsRouter = Router();
-const ALLOWED_TYPES = new Set(["pdf", "docx", "doc"]);
+const ALLOWED_TYPES = new Set(["pdf", "docx", "doc", "xlsx", "xls", "xlsm", "csv"]);
+const SPREADSHEET_TYPES = new Set(["xlsx", "xls", "xlsm", "csv"]);
 
 // GET /single-documents
 documentsRouter.get("/", requireAuth, async (req, res) => {
@@ -424,7 +427,11 @@ documentsRouter.post(
     const contentType =
       suffix === "pdf"
         ? "application/pdf"
-        : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        : suffix === "xlsx" || suffix === "xlsm"
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : suffix === "csv"
+            ? "text/csv"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     try {
       await uploadFile(
         key,
@@ -848,17 +855,35 @@ async function handleDocumentUpload(
     return void res
       .status(400)
       .json({
-        detail: `Unsupported file type: ${suffix}. Allowed: pdf, docx, doc`,
+        detail: `Unsupported file type: ${suffix}. Allowed: pdf, docx, doc, xlsx, xls, xlsm, csv`,
       });
 
-  const content = file.buffer;
+  // Normalize legacy .xls (BIFF) → .xlsx so the extractor only has to know one
+  // format. We keep the user's original filename for display but rewrite the
+  // bytes and the storage suffix.
+  let content = file.buffer;
+  let storedSuffix = suffix;
+  if (suffix === "xls") {
+    try {
+      content = await xlsToXlsx(file.buffer);
+      storedSuffix = "xlsx";
+    } catch (err) {
+      console.error(`[upload] .xls → .xlsx conversion failed for ${filename}:`, err);
+      return void res
+        .status(500)
+        .json({ detail: ".xls conversion failed. Is LibreOffice installed?" });
+    }
+  } else if (suffix === "xlsm") {
+    // Treat macro-enabled workbooks as xlsx for extraction; macros never execute.
+    storedSuffix = "xlsx";
+  }
   const { data: doc, error: insertErr } = await db
     .from("documents")
     .insert({
       project_id: projectId,
       user_id: userId,
       filename,
-      file_type: suffix,
+      file_type: storedSuffix,
       size_bytes: content.byteLength,
       status: "processing",
     })
@@ -873,9 +898,13 @@ async function handleDocumentUpload(
     const docId = doc.id as string;
     const key = storageKey(userId, docId, filename);
     const contentType =
-      suffix === "pdf"
+      storedSuffix === "pdf"
         ? "application/pdf"
-        : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        : storedSuffix === "xlsx"
+          ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          : storedSuffix === "csv"
+            ? "text/csv"
+            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     await uploadFile(
       key,
       content.buffer.slice(
@@ -889,12 +918,13 @@ async function handleDocumentUpload(
       content.byteOffset,
       content.byteOffset + content.byteLength,
     ) as ArrayBuffer;
-    const tree = await extractStructureTree(rawBuf, suffix, filename);
-    const pageCount = suffix === "pdf" ? await countPdfPages(rawBuf) : null;
+    const tree = await extractStructureTree(rawBuf, storedSuffix, filename);
+    const pageCount = storedSuffix === "pdf" ? await countPdfPages(rawBuf) : null;
 
     // Convert DOCX/DOC → PDF for display. PDFs are their own rendition.
+    // Spreadsheets have no PDF rendition; the frontend uses XlsxView instead.
     let pdfStoragePath: string | null = null;
-    if (suffix === "docx" || suffix === "doc") {
+    if (storedSuffix === "docx" || storedSuffix === "doc") {
       try {
         const pdfBuf = await docxToPdf(content);
         const pdfKey = convertedPdfKey(userId, docId);
@@ -913,9 +943,11 @@ async function handleDocumentUpload(
           err,
         );
       }
-    } else if (suffix === "pdf") {
+    } else if (storedSuffix === "pdf") {
       pdfStoragePath = key;
     }
+    // SPREADSHEET_TYPES → no PDF rendition; pdfStoragePath stays null.
+    void SPREADSHEET_TYPES;
 
     // storage_path / pdf_storage_path live on document_versions now —
     // create the V1 "upload" row and point documents.current_version_id
@@ -995,6 +1027,26 @@ async function extractStructureTree(
   _filename: string,
 ): Promise<unknown[] | null> {
   try {
+    if (fileType === "xlsx") {
+      const extract = await extractXlsx(Buffer.from(content));
+      return extract.sheets.map((s, i) => ({
+        id: `sheet-${i}`,
+        title: s.name,
+        level: 1,
+        page_number: null,
+        children: [],
+      }));
+    }
+    if (fileType === "csv") {
+      const extract = extractCsv(Buffer.from(content), _filename.replace(/\.csv$/i, "") || "Sheet1");
+      return extract.sheets.map((s, i) => ({
+        id: `sheet-${i}`,
+        title: s.name,
+        level: 1,
+        page_number: null,
+        children: [],
+      }));
+    }
     if (fileType === "pdf") {
       const pdfjsLib = await import(
         "pdfjs-dist/legacy/build/pdf.mjs" as string

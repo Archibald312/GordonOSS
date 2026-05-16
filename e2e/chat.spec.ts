@@ -5,10 +5,9 @@ import { createAndLoginTestUser } from "./helpers/auth";
 const SAMPLE_PDF = resolve(__dirname, "fixtures", "sample.pdf");
 
 // Chat depends on a real LLM provider. The frontend's default model is
-// `gemini-3-flash-preview`, which is on the backend's free-tier list. The test
-// env sets ALLOW_FREE_TIER_LLM=true and FREE_TIER_FIXTURE_ALLOWLIST=sample.pdf
-// so the backend will route the call to Gemini's free tier — see
-// `backend/src/lib/llm/freeTierGuard.ts`.
+// `gemini-3-flash-preview`. The free-tier guard was removed (see CLAUDE.md
+// "Future capabilities" for the planned reintroduction); calls go directly
+// to whatever provider matches the model ID.
 
 async function createProjectAndOpen(page: Page, name: string) {
   await page.goto("/projects");

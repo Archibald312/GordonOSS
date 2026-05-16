@@ -19,3 +19,23 @@ Per `CLAUDE.md`: "When deviating from the plan, record the decision in `decision
 6. **System-prompt rewrites are minimal.** Replaced "AI legal assistant / legal analyst" with "AI finance assistant / finance analyst" and adjusted the framing line in `chatTools.ts` SYSTEM_PROMPT to invoke finance disciplines (M&A, PE, private credit, lev fin, IB, research) and emphasize citation auditability — leaving the citation, docx, edit, and numbering instructions intact because those are mechanism, not domain. Per the deterministic-first principle, the LLM system prompt is the right place for the framing because it's the open-ended-reasoning surface; deterministic citation and numbering machinery stays separate.
 
 **Verification:** backend `tsc --noEmit` clean; frontend `tsc --noEmit` clean; backend Vitest 57/57 passing.
+
+## 2026-05-15 — Phase 5: Excel I/O (xlsx/xls/xlsm/csv ingestion + emission)
+
+**Scope changes vs. the original plan:**
+
+1. **Birthed `backend/src/lib/extractors/` in Phase 5 instead of Phase 9.** The original plan slotted the extractors directory into Phase 9 (cross-doc consistency check). Phase 5 needs deterministic cell-level extraction immediately — the citation IS the product, and a workbook citation has no integrity without a verbatim cell value at `Sheet!Address`. So `extractors/xlsx.ts` and `extractors/csv.ts` ship now; later phases (defined-terms, numbers, entities, factTuples) populate the same directory. Pure code, unit-tested, no LLM in the hot path.
+
+2. **`.xls` (legacy BIFF) is normalized to `.xlsx` at upload time via LibreOffice** rather than carried as a second format through the pipeline. One parser (ExcelJS) covers `.xlsx`, `.xlsm`, and `.xls`-converted-to-`.xlsx`. The user's original filename is preserved; only the bytes and `file_type` get rewritten. `.xlsm` macros are never executed — we only parse the workbook XML.
+
+3. **CSV bundled into this phase.** The original plan focused on xlsx; CSV slid in because (a) finance teams ingest CSV deliverables all the time (broker exports, EDGAR XBRL-to-CSV, fund accounting trial balances), and (b) the extractor surface is the same shape as xlsx, so the marginal cost was a tiny RFC 4180 parser. Both extractors emit the same `XlsxExtract` shape so the LLM-facing flattener works on either.
+
+4. **Citation `page` field reused for cell addresses; no new `cell` field.** The end-to-end citation type is already `page: number | string`. Spreadsheet citations encode the cell as `"Income Statement!B12"`. `normalizeCitation` was loosened to preserve any `page` string containing `!` or matching a bare cell-address regex instead of forcing it to `1`. The frontend `formatCitationPage` and `expandCitationToEntries` were extended to recognize and route spreadsheet refs into the new `cellRef` field on `CitationQuote`, which the new `XlsxView` uses to locate and highlight the target cell.
+
+5. **Emission scope limited to client-side tabular-review export comments.** The user explicitly scoped Phase 5 to "tabular review export with cell comments" and deferred a general-purpose `generate_xlsx` LLM tool. `frontend/src/app/components/tabular/exportToExcel.ts` attaches an ExcelJS `cell.note` to every exported cell that carries citations — comments contain `[N] filename — Page N — "quote"` lines. Source-side spreadsheet citations in tabular reviews are out of scope until a finance workflow specifically needs them; `preprocessCitations` continues to expect numeric pages (PDF/DOCX-backed tabular reviews are the dominant case).
+
+6. **Minimal HTML grid viewer (`XlsxView`)** renders sheets as `<table>` elements with per-cell `data-sheet`/`data-cell` attributes. Sheet tabs at the top; a fixed left-column row index; a yellow highlight applied for ~2.5s on citation clicks. Reuses the existing `useFetchDocxBytes` hook because the `/single-documents/:id/docx` route streams whatever bytes are at the active version's `storage_path` — the response `Content-Type` header is wrong for xlsx but irrelevant when consuming `arrayBuffer()`. Mounted from `DocPanel` and `DocViewModal`.
+
+7. **Document-row upload path:** `ALLOWED_TYPES` extends to include the four new suffixes. Spreadsheets skip the DOCX→PDF conversion (no PDF rendition is created). `extractStructureTree` returns the sheet list as level-1 nodes so the existing outline UI displays sheet names. `pageCount` is left `null` for spreadsheets — pages don't apply.
+
+**Verification:** backend `tsc --noEmit` clean; backend Vitest 69/69 passing (10 new extractor tests).

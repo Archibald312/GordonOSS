@@ -87,6 +87,7 @@ Rules:
 - Keep quotes short (ideally ≤ 25 words) and narrowly scoped to the specific claim. Don't reuse one quote to support multiple different claims — give each its own citation
 - "page" refers to the sequential [Page N] marker in the text you were given (1-indexed from the first page). IGNORE any page numbers printed inside the document itself (footers, roman numerals, etc.)
 - For a single-page quote, set "page" to an integer. If a quote is one continuous sentence that spans two pages, set "page" to "N-M" and insert [[PAGE_BREAK]] in the quote at the page break. Otherwise, use separate citations for text on different pages
+- For SPREADSHEET documents (xlsx / csv), the text you receive is tagged per cell as [SheetName!CellAddress] (e.g. [Income Statement!B12]). In citations for spreadsheets, set "page" to the exact "SheetName!CellAddress" string of the cell you are citing, and set "quote" to that cell's exact value as shown after the tag. Cite one cell per citation entry; for multiple cells, use multiple citation entries
 - Put the <CITATIONS> block at the very end of the response. Omit it entirely if there are no citations
 
 DOCX GENERATION:
@@ -155,6 +156,12 @@ function normalizeCitation(raw: unknown): ParsedCitation | null {
         page = c.page;
     } else if (typeof c.page === "string" && /^\d+\s*-\s*\d+$/.test(c.page)) {
         page = c.page;
+    } else if (typeof c.page === "string" && c.page.includes("!")) {
+        // Spreadsheet cell reference, e.g. "Income Statement!B12". Keep as-is.
+        page = c.page.trim();
+    } else if (typeof c.page === "string" && /^[A-Z]+\d+$/i.test(c.page.trim())) {
+        // Bare cell address (single-sheet workbook / csv). Keep as-is.
+        page = c.page.trim();
     } else {
         const n = parseInt(String(c.page ?? ""), 10);
         if (!Number.isFinite(n)) page = 1;

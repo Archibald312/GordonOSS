@@ -588,8 +588,14 @@ chatRouter.post("/", requireAuth, async (req, res) => {
     } catch (err) {
         console.error("[chat/stream] error:", err);
         try {
+            const detail =
+                process.env.NODE_ENV === "production"
+                    ? "Stream error"
+                    : err instanceof Error
+                        ? `${err.name}: ${err.message}`
+                        : String(err);
             write(
-                `data: ${JSON.stringify({ type: "error", message: "Stream error" })}\n\n`,
+                `data: ${JSON.stringify({ type: "error", message: detail })}\n\n`,
             );
             write("data: [DONE]\n\n");
         } catch {

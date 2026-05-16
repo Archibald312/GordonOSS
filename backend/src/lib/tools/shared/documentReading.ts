@@ -2,6 +2,8 @@ import path from "path";
 import { downloadFile } from "../../storage";
 import { extractDocxBodyText } from "../../docxTrackedChanges";
 import { loadActiveVersion } from "../../documentVersions";
+import { extractXlsx, flattenXlsxForLLM } from "../../extractors/xlsx";
+import { extractCsv } from "../../extractors/csv";
 import type { createServerSupabase } from "../../supabase";
 import type { DocStore, DocIndex } from "../../chatTools";
 
@@ -42,14 +44,31 @@ export function resolveDocLabel(
     return null;
 }
 
-export function citationReminder(docLabel: string, filename: string): string {
-    return [
+export function citationReminder(
+    docLabel: string,
+    filename: string,
+    fileType?: string,
+): string {
+    const isSpreadsheet = fileType === "xlsx" || fileType === "csv";
+    const lines = [
         `[Citation requirement for ${docLabel} ("${filename}")]:`,
         `If your final answer makes any factual claim from this document, include inline [N] markers and append a final <CITATIONS> JSON block.`,
         `Every citation entry for this document MUST use "doc_id": "${docLabel}".`,
-        `Use this exact citation object shape: {"ref": 1, "doc_id": "${docLabel}", "page": 1, "quote": "exact verbatim text from the document"}.`,
+    ];
+    if (isSpreadsheet) {
+        lines.push(
+            `This is a spreadsheet. For each citation, set "page" to the sheet+cell coordinate (e.g. "Income Statement!B12") and "quote" to the cell's exact value as shown in the [Sheet!Addr] tags.`,
+            `Use this exact citation object shape: {"ref": 1, "doc_id": "${docLabel}", "page": "Income Statement!B12", "quote": "4200000"}.`,
+        );
+    } else {
+        lines.push(
+            `Use this exact citation object shape: {"ref": 1, "doc_id": "${docLabel}", "page": 1, "quote": "exact verbatim text from the document"}.`,
+        );
+    }
+    lines.push(
         `Do not use "marker" or "text" keys in the citation block; use "ref" and "quote".`,
-    ].join("\n");
+    );
+    return lines.join("\n");
 }
 
 export async function extractPdfText(buf: ArrayBuffer): Promise<string> {
@@ -194,7 +213,30 @@ export async function readDocumentContent(
             );
         }
         let text: string;
-        if (docInfo.file_type === "pdf") {
+        if (docInfo.file_type === "xlsx") {
+            try {
+                const extract = await extractXlsx(Buffer.from(raw));
+                text = flattenXlsxForLLM(extract);
+                console.log(
+                    `[read_document] xlsx extract length=${text.length} sheets=${extract.sheets.length} for filename="${docInfo.filename}"`,
+                );
+            } catch (err) {
+                console.log(`[read_document] xlsx extract failed:`, err);
+                text = "";
+            }
+        } else if (docInfo.file_type === "csv") {
+            try {
+                const stem = docInfo.filename.replace(/\.csv$/i, "") || "Sheet1";
+                const extract = extractCsv(Buffer.from(raw), stem);
+                text = flattenXlsxForLLM(extract);
+                console.log(
+                    `[read_document] csv extract length=${text.length} for filename="${docInfo.filename}"`,
+                );
+            } catch (err) {
+                console.log(`[read_document] csv extract failed:`, err);
+                text = "";
+            }
+        } else if (docInfo.file_type === "pdf") {
             text = await extractPdfText(raw);
             console.log(
                 `[read_document] pdf extracted length=${text.length} for filename="${docInfo.filename}"`,

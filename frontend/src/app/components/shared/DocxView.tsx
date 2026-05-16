@@ -417,7 +417,15 @@ export function DocxView({
                     onReadyRef.current?.();
                 });
             } catch (e) {
-                console.error("docx-preview render failed", e);
+                // Surface a visible fallback instead of letting the Next.js
+                // dev overlay catch this as an uncaught error. Common cause:
+                // bytes aren't a real .docx (e.g. an .xlsx misrouted here, or
+                // a backend error response served as docx). Logging at
+                // `warn` keeps the dev overlay quiet.
+                console.warn("[DocxView] docx-preview render failed", e);
+                if (cancelled || !containerRef.current) return;
+                const msg = e instanceof Error ? e.message : String(e);
+                containerRef.current.innerHTML = `<div style="padding:24px;color:#b91c1c;font-size:13px">Couldn't render this document. It may not be a valid .docx file.<br/><br/><span style="color:#6b7280">${msg.replace(/[<>&]/g, "")}</span></div>`;
             }
         })();
 

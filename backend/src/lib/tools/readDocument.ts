@@ -37,7 +37,9 @@ export const readDocument: ToolDefinition<"read_document"> = {
             ctx.docIndex,
             ctx.db,
         );
-        const filename = ctx.docStore.get(docId)?.filename;
+        const info = ctx.docStore.get(docId);
+        const filename = info?.filename;
+        const fileType = info?.file_type;
         const documentId = ctx.docIndex?.[docId]?.document_id;
         const docsRead = filename
             ? [{ filename, document_id: documentId }]
@@ -47,7 +49,7 @@ export const readDocument: ToolDefinition<"read_document"> = {
                 role: "tool",
                 tool_call_id: toolCallId,
                 content: filename
-                    ? `${citationReminder(docId, filename)}\n\n${content}`
+                    ? `${citationReminder(docId, filename, fileType)}\n\n${content}`
                     : content,
             },
             sideEffects: docsRead.length ? { docsRead } : undefined,

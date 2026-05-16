@@ -32,7 +32,7 @@ export interface GordonDocument {
   project_id: string | null;
   folder_id?: string | null;
   filename: string;
-  file_type: string | null; // pdf | docx | doc
+  file_type: string | null; // pdf | docx | doc | xlsx | csv
   storage_path: string | null;
   pdf_storage_path: string | null;
   size_bytes: number | null;
@@ -157,6 +157,13 @@ export interface GordonMessage {
 export interface CitationQuote {
   page: number;
   quote: string;
+  /**
+   * For spreadsheet citations, the sheet name + cell address (e.g.
+   * "Income Statement!B12"). `page` is set to 1 as a placeholder when
+   * `cellRef` is present — the XlsxView ignores `page` and uses `cellRef`
+   * to locate and highlight the target cell.
+   */
+  cellRef?: string;
 }
 
 /**
@@ -201,14 +208,23 @@ export function expandCitationToEntries(
       { page: endPage, quote: after.trim() },
     ].filter((e) => e.quote.length > 0);
   }
+  // Spreadsheet citation: page is "Sheet!Cell" or a bare cell address.
+  if (typeof a.page === "string" && /[A-Za-z]/.test(a.page) && /\d/.test(a.page)) {
+    return [{ page: 1, quote: a.quote, cellRef: a.page }];
+  }
   const pageNum =
     typeof a.page === "number" ? a.page : parseInt(String(a.page), 10);
   if (!Number.isFinite(pageNum)) return [];
   return [{ page: pageNum, quote: a.quote }];
 }
 
-/** Format the page(s) of a citation for display, e.g. "Page 3" or "Page 41-42". */
+/**
+ * Format the page(s) of a citation for display, e.g. "Page 3" or "Page 41-42".
+ * For spreadsheet citations, `page` is a sheet+cell address like
+ * "Income Statement!B12"; show it verbatim instead of prefixing "Page".
+ */
 export function formatCitationPage(a: GordonCitationAnnotation): string {
+  if (typeof a.page === "string" && a.page.includes("!")) return a.page;
   if (typeof a.page === "string") return `Page ${a.page}`;
   return `Page ${a.page}`;
 }
