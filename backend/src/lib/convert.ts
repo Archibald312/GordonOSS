@@ -64,6 +64,17 @@ export async function xlsToXlsx(buffer: Buffer): Promise<Buffer> {
   return convert(buffer, ".xlsx", undefined);
 }
 
+/**
+ * Convert an HTML buffer to PDF via LibreOffice. Used by the EDGAR connector
+ * (Phase 7) to normalize SEC filings — most are HTML and we transcode at
+ * ingest so citations work identically to manual PDF uploads.
+ * Throws if LibreOffice is not installed or conversion fails.
+ */
+export async function htmlToPdf(buffer: Buffer): Promise<Buffer> {
+  const convert = await getConvert();
+  return convert(buffer, ".pdf", undefined);
+}
+
 export function convertedPdfKey(userId: string, docId: string): string {
   return `converted-pdfs/${userId}/${docId}.pdf`;
 }
