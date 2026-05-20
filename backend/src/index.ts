@@ -13,6 +13,7 @@ import { workflowsRouter } from "./routes/workflows";
 import { userRouter } from "./routes/user";
 import { downloadsRouter } from "./routes/downloads";
 import { auditRouter } from "./routes/audit";
+import { connectorsRouter } from "./routes/connectors";
 
 try {
   encryptionKey();
@@ -117,6 +118,7 @@ app.post("/chat/:chatId/generate-title", chatCreateLimiter);
 app.post("/single-documents", uploadLimiter);
 app.post("/single-documents/:documentId/versions", uploadLimiter);
 app.post("/projects/:projectId/documents", uploadLimiter);
+app.post("/connectors/edgar/ingest", uploadLimiter);
 
 app.use("/chat", chatRouter);
 app.use("/projects", projectsRouter);
@@ -128,6 +130,7 @@ app.use("/user", userRouter);
 app.use("/users", userRouter);
 app.use("/download", downloadsRouter);
 app.use("/audit-log", auditRouter);
+app.use("/connectors", connectorsRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 

@@ -2,6 +2,28 @@
 
 Per `CLAUDE.md`: "When deviating from the plan, record the decision in `decisions.md` at the repo root with a one-paragraph reason."
 
+## 2026-05-20 — Phase 7: Connector framework + EDGAR (Tier 1 reference)
+
+**Scope changes vs. the original plan:**
+
+1. **Built the framework as three thin files, not a heavy abstraction.** `lib/connectors/types.ts` (interfaces), `lib/connectors/registry.ts` (id → connector map with self-registration), `lib/connectors/ingest.ts` (the only file that touches `documents` / `document_versions`). Each connector owns its own client, auth, and search/fetch primitives — the framework only standardizes the ingest tail. Phase 11 connectors (Google Drive, Capital IQ) plug into the same map without touching shared code. Anti-pattern dodged: a "BaseConnector" abstract class with hooks for every imagined future need.
+
+2. **Provenance lives on `documents.source_connector` + `documents.source_ref jsonb`,** not on a new `connector_imports` table. Reason: every consumer that needs source info also needs the document, so coupling them keeps lookups one query. The unique partial index `(source_connector, source_ref->>'accession_number', source_ref->>'document_role')` enforces dedupe at the DB layer; the framework also checks before writing so we don't burn an R2 upload on a guaranteed-collision.
+
+3. **EDGAR HTML → PDF transcoding via LibreOffice at ingest.** Per the question answered up front: citations are the product. Storing HTML as-is would mean inventing a new viewer and breaking page-number citation parity with manual PDF uploads. LibreOffice html→pdf is already on the box for docx→pdf; one new export from `convert.ts` (`htmlToPdf`). If conversion fails (rare), we fall back to storing HTML as-is so the user still gets the document; this is logged but not fatal.
+
+4. **XBRL facts table (`edgar_facts`) shipped now, not deferred to Phase 8.** Original plan put structured ground truth into Phase 8 (cross-doc consistency). User asked for full XBRL scope on this phase. Reason it fits: the deterministic XBRL parser is the canonical example of "deterministic-first" — every fact has a `(concept, period, unit, decimals)` tuple with a byte-offset citation back to the instance doc. Phase 8 builds *on top of* this table by comparing prose-extracted numbers to it; getting the producer in place now means Phase 8 starts with real data instead of stubs. Parser is pure (`extractXbrlFacts(xml)` → `XbrlFact[]`), heavily unit-tested, lives next to the EDGAR connector since no other source consumes XBRL.
+
+5. **Routes are backend-only — no UI.** Mirroring the routing-seam decision (2026-05-15): there are no external users yet, and Phase 11 will revisit any connector UI anyway. Three endpoints under `/connectors/edgar/`: `lookup` (ticker → CIK), `filings` (CIK → filings list), `ingest` (accession → document rows + optional XBRL facts). Trigger via curl/admin. The `uploadLimiter` is applied to `/ingest` because each call writes 1–N R2 objects.
+
+6. **`EDGAR_USER_AGENT` env var required.** SEC fair-use policy requires every API request to identify the requester with company + contact email. The `EdgarClient` constructor throws if the var is missing or doesn't contain an `@`. Routes catch the throw and return 503 with a clear message; the connector is not registered if env is missing, so `/connectors/edgar/*` returns 503 without surprise. No silent skipping.
+
+7. **Audit log: every successful or failed ingest writes a `connector_fetch` row** with `connectorId='edgar'`, `documentIds=[primary, ...exhibits, xbrl]`, and `sourceLicenseScopes=['public']`. SEC data is public, so the license scope is straightforward — Phase 11 connectors with paid/licensed sources will populate this differently.
+
+8. **What's NOT in this phase:** UI of any kind, OAuth for any connector, scheduling/polling for new filings, the `Connector.search()` method (only `EdgarConnector.ingestFiling` exists today — every connector is free to define its own surface), webhook intake, multi-source de-duplication beyond the per-connector accession+role index.
+
+**Verification:** backend `tsc --noEmit` clean; backend Vitest 84/84 passing (11 new: 3 registry, 3 xbrl, 5 client).
+
 ## 2026-05-15 — Phase 4: Domain swap (legal → finance)
 
 **Scope changes vs. the original plan:**
