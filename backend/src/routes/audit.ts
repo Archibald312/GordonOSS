@@ -10,6 +10,7 @@ const EVENT_TYPES = new Set([
     "connector_fetch",
     "document_upload",
     "document_download",
+    "consistency_check",
 ]);
 
 function parseTimestamp(value: unknown): string | null {
