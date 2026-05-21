@@ -22,6 +22,7 @@ import {
     X,
 } from "lucide-react";
 import { FindingsPanel } from "@/app/components/shared/FindingsPanel";
+import { supabase } from "@/lib/supabase";
 import {
     deleteChat,
     deleteDocument,
@@ -478,9 +479,198 @@ export default function ProjectAssistantChatPage({ params }: Props) {
         setSelectedDocId(docId);
     }
 
+    // ── Slash commands ────────────────────────────────────────────────────────
+    // Intercepts `/edgar TICKER [FORM] [COUNT]` and runs lookup → filings →
+    // ingest×N against the existing backend routes. Output is appended as
+    // synthetic chat messages (not persisted to chat_messages) so the user
+    // sees progress in-thread. Project gets refetched on success so the
+    // ingested docs appear in the Explorer.
+    const runEdgarSlash = useCallback(
+        async (raw: string) => {
+            const args = raw.trim().split(/\s+/).slice(1);
+            if (args.length === 0) {
+                setMessages((prev) => [
+                    ...prev,
+                    { role: "user", content: raw },
+                    {
+                        role: "assistant",
+                        content:
+                            "Usage: `/edgar TICKER [FORM] [COUNT]`\n\nExamples:\n- `/edgar TSLA` — last 1 10-K\n- `/edgar TSLA 10-K 2` — last 2 10-Ks\n- `/edgar AAPL 10-Q 4` — last 4 10-Qs",
+                    },
+                ]);
+                return;
+            }
+            const ticker = args[0].toUpperCase();
+            const form = (args[1] ?? "10-K").toUpperCase();
+            const count = Math.max(
+                1,
+                Math.min(10, Number.parseInt(args[2] ?? "1", 10) || 1),
+            );
+
+            const progress: string[] = [
+                `**EDGAR ingest** — ticker=\`${ticker}\` form=\`${form}\` count=\`${count}\``,
+            ];
+            const pushUser = () =>
+                setMessages((prev) => [
+                    ...prev,
+                    { role: "user", content: raw },
+                    { role: "assistant", content: progress.join("\n\n") },
+                ]);
+            const updateLast = () =>
+                setMessages((prev) => {
+                    const next = [...prev];
+                    if (next.length && next[next.length - 1].role === "assistant") {
+                        next[next.length - 1] = {
+                            ...next[next.length - 1],
+                            content: progress.join("\n\n"),
+                        };
+                    }
+                    return next;
+                });
+            pushUser();
+
+            try {
+                const {
+                    data: { session },
+                } = await supabase.auth.getSession();
+                const token = session?.access_token;
+                if (!token) {
+                    progress.push("Error: no auth session.");
+                    updateLast();
+                    return;
+                }
+                const apiBase =
+                    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+                const authHeaders = {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                };
+
+                // 1. Lookup CIK
+                progress.push(`Looking up CIK for ${ticker}…`);
+                updateLast();
+                const lookupResp = await fetch(`${apiBase}/connectors/edgar/lookup`, {
+                    method: "POST",
+                    headers: authHeaders,
+                    body: JSON.stringify({ ticker }),
+                });
+                if (!lookupResp.ok) {
+                    progress.push(`Lookup failed: HTTP ${lookupResp.status} ${await lookupResp.text()}`);
+                    updateLast();
+                    return;
+                }
+                const lookup = (await lookupResp.json()) as {
+                    cik: string;
+                    ticker: string;
+                    name: string;
+                };
+                progress[progress.length - 1] =
+                    `✓ Found **${lookup.name}** (CIK ${lookup.cik})`;
+                updateLast();
+
+                // 2. List filings
+                progress.push(`Fetching last ${count} ${form}…`);
+                updateLast();
+                const filingsResp = await fetch(
+                    `${apiBase}/connectors/edgar/filings?cik=${lookup.cik}&form_types=${encodeURIComponent(form)}&limit=${count}`,
+                    { headers: { Authorization: `Bearer ${token}` } },
+                );
+                if (!filingsResp.ok) {
+                    progress.push(`Filings lookup failed: HTTP ${filingsResp.status} ${await filingsResp.text()}`);
+                    updateLast();
+                    return;
+                }
+                const filingsData = (await filingsResp.json()) as {
+                    filings: Array<{
+                        accession_number: string;
+                        form: string;
+                        filing_date: string;
+                        report_date?: string;
+                    }>;
+                };
+                const filings = filingsData.filings.slice(0, count);
+                if (filings.length === 0) {
+                    progress[progress.length - 1] = `No ${form} filings found for ${ticker}.`;
+                    updateLast();
+                    return;
+                }
+                progress[progress.length - 1] =
+                    `✓ Found ${filings.length} ${form}(s): ${filings.map((f) => f.accession_number).join(", ")}`;
+                updateLast();
+
+                // 3. Ingest each
+                for (const f of filings) {
+                    progress.push(
+                        `Ingesting ${f.accession_number} (${f.report_date ?? f.filing_date})… this may take 30–90s.`,
+                    );
+                    updateLast();
+                    const ingestResp = await fetch(
+                        `${apiBase}/connectors/edgar/ingest`,
+                        {
+                            method: "POST",
+                            headers: authHeaders,
+                            body: JSON.stringify({
+                                cik: lookup.cik,
+                                accession_number: f.accession_number,
+                                form: f.form,
+                                filing_date: f.filing_date,
+                                report_date: f.report_date,
+                                ticker: lookup.ticker,
+                                project_id: projectId,
+                                include_exhibits: false,
+                                extract_xbrl: true,
+                            }),
+                        },
+                    );
+                    if (!ingestResp.ok) {
+                        progress[progress.length - 1] =
+                            `✗ ${f.accession_number} failed: HTTP ${ingestResp.status} ${await ingestResp.text()}`;
+                        updateLast();
+                        continue;
+                    }
+                    const ingested = (await ingestResp.json()) as {
+                        primary: { document_id: string; deduped: boolean } | null;
+                        xbrl: { facts_inserted: number; deduped: boolean } | null;
+                    };
+                    const facts = ingested.xbrl?.facts_inserted ?? 0;
+                    const dedup = ingested.primary?.deduped
+                        ? " (already ingested)"
+                        : "";
+                    progress[progress.length - 1] =
+                        `✓ ${f.accession_number} ingested${dedup} · ${facts} XBRL facts`;
+                    updateLast();
+                }
+
+                // 4. Refresh project so docs appear in explorer
+                progress.push("Refreshing project…");
+                updateLast();
+                try {
+                    const fresh = await getProject(projectId);
+                    setProject(fresh);
+                    progress[progress.length - 1] =
+                        "✓ Done. New docs are in the Explorer. Open one and click **Consistency** to compare prose against XBRL.";
+                } catch {
+                    progress[progress.length - 1] =
+                        "Done, but project refresh failed — reload the page to see new docs.";
+                }
+                updateLast();
+            } catch (e) {
+                progress.push(`Unexpected error: ${e instanceof Error ? e.message : String(e)}`);
+                updateLast();
+            }
+        },
+        [projectId, setMessages],
+    );
+
     // ── Handlers ──────────────────────────────────────────────────────────────
     const handleSubmit = useCallback(
         (message: GordonMessage) => {
+            // Slash command interception — runs before the LLM ever sees it.
+            const content = message.content?.trim() ?? "";
+            if (content.startsWith("/edgar")) {
+                void runEdgarSlash(content);
+                return;
+            }
             if (!activeTab) return handleChat(message);
             return handleChat(message, {
                 displayedDoc: {
@@ -489,7 +679,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                 },
             });
         },
-        [activeTab, handleChat],
+        [activeTab, handleChat, runEdgarSlash],
     );
 
     const handleDocClick = (doc: GordonDocument) => {
