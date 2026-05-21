@@ -34,6 +34,14 @@ export type EdgarIngestOptions = {
     ticker?: string | null;
     includeExhibits?: boolean;
     extractXbrl?: boolean;
+    /**
+     * Authoritative primary document filename from the submissions API.
+     * When provided, overrides `getFilingIndex.primary_document` (which is
+     * a heuristic guess from the index.json). The /connectors/edgar/filings
+     * endpoint returns this field; slash-command callers should pass it
+     * through so the right HTML lands as the primary.
+     */
+    primaryDocument?: string;
 };
 
 export type EdgarIngestResult = {
@@ -118,10 +126,16 @@ export class EdgarConnector implements Connector {
         const { db, userId, projectId, opts } = args;
         const transcode = args.htmlToPdfImpl ?? htmlToPdf;
 
-        const index = await this.client.getFilingIndex(
+        const indexFromSec = await this.client.getFilingIndex(
             opts.cik,
             opts.accessionNumber,
         );
+        // Caller-provided primary wins over the index.json heuristic — the
+        // submissions API returns an authoritative primary_document per
+        // filing which is more reliable than picking by file size / type.
+        const index = opts.primaryDocument
+            ? { ...indexFromSec, primary_document: opts.primaryDocument }
+            : indexFromSec;
 
         const sharedRef = {
             accession_number: opts.accessionNumber,

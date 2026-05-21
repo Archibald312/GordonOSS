@@ -46,6 +46,8 @@ import { DocView } from "@/app/components/shared/DocView";
 import { OwnerOnlyModal } from "@/app/components/shared/OwnerOnlyModal";
 import { DocxView } from "@/app/components/shared/DocxView";
 import { XlsxView } from "@/app/components/shared/XlsxView";
+import { HtmlView } from "@/app/components/shared/HtmlView";
+import { XmlPlaceholderView } from "@/app/components/shared/XmlPlaceholderView";
 import { GordonIcon } from "@/components/chat/gordon-icon";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUserProfile } from "@/contexts/UserProfileContext";
@@ -93,6 +95,16 @@ function spreadsheetTabKind(filename: string): "xlsx" | "csv" | null {
     if (ext === "xlsx" || ext === "xls" || ext === "xlsm") return "xlsx";
     if (ext === "csv") return "csv";
     return null;
+}
+
+function isHtmlTab(filename: string) {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    return ext === "htm" || ext === "html";
+}
+
+function isXmlTab(filename: string) {
+    const ext = filename.split(".").pop()?.toLowerCase();
+    return ext === "xml";
 }
 
 const ICON_SIZE = 30;
@@ -586,6 +598,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                         form: string;
                         filing_date: string;
                         report_date?: string;
+                        primary_document?: string;
                     }>;
                 };
                 const filings = filingsData.filings.slice(0, count);
@@ -619,6 +632,10 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                                 project_id: projectId,
                                 include_exhibits: false,
                                 extract_xbrl: true,
+                                // Authoritative primary from submissions API —
+                                // prevents the connector from heuristically
+                                // picking SEC-generated R-files as primary.
+                                primary_document: f.primary_document,
                             }),
                         },
                     );
@@ -1300,7 +1317,18 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                     ) : null}
                     <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                         {activeTab ? (
-                            spreadsheetTabKind(activeTab.filename) ? (
+                            isXmlTab(activeTab.filename) ? (
+                                <XmlPlaceholderView
+                                    key={activeTab.documentId}
+                                    filename={activeTab.filename}
+                                />
+                            ) : isHtmlTab(activeTab.filename) ? (
+                                <HtmlView
+                                    key={activeTab.documentId}
+                                    documentId={activeTab.documentId}
+                                    versionId={activeTab.versionId}
+                                />
+                            ) : spreadsheetTabKind(activeTab.filename) ? (
                                 <XlsxView
                                     key={activeTab.documentId}
                                     documentId={activeTab.documentId}
