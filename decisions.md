@@ -2,6 +2,28 @@
 
 Per `CLAUDE.md`: "When deviating from the plan, record the decision in `decisions.md` at the repo root with a one-paragraph reason."
 
+## 2026-05-20 — Phase 8: Cross-doc consistency + deterministic extractors
+
+**Scope changes vs. the original plan:**
+
+1. **Extractors directory was already born in Phase 5** (xlsx, csv). Phase 8 adds the four extractors the original plan slotted here — `numbers.ts`, `periods.ts`, `entities.ts`, `factTuples.ts` — all pure code, byte-offset citations, heavy unit coverage, zero LLM in the hot path. The `factTuples` composer wires the lower extractors into `(entity, concept, period, value, unit, citation)` tuples whose `concept` field mirrors XBRL concept names exactly so 1-1 comparison against `edgar_facts` requires no mapping table.
+
+2. **Consistency engine split into two pure functions.** `compareToXbrl(prose, xbrl)` handles intra-doc prose-vs-XBRL — the high-confidence path because every XBRL fact has a `decimals` precision attribute we can use for tolerance. `compareToProse(left, right)` handles cross-doc sibling comparisons (10-Q vs 10-K) by matching on `(entity, concept, periodKey)`. Both return `Finding[]` with both sides cited by byte offset; persistence is a separate concern. Tolerance is the larger of 0.5% deltaPct or the XBRL `decimals` precision, so rounding ("$94.9B" vs 94,930,000,000) does not produce findings.
+
+3. **NER via regex + EDGAR-seeded gazetteer, no `compromise.js` dependency.** The gazetteer is built from `documents.source_ref` (cik + ticker) on every run — for projects with EDGAR-ingested filings, every issuer mentioned in prose resolves to a real CIK. Outside-gazetteer mentions fall back to a `Inc./Corp./LP/LLC/plc/Ltd` suffix regex with explainable proximity thresholds. Marginal value of pulling in a NER library at ~250KB wasn't worth it for the documents we actually process today; revisit if Phase 11 connectors introduce non-filing prose where general-purpose NER pays off.
+
+4. **`consistency_findings` table persisted, not transient.** Every run gets a `run_id` so the UI / future audit surface can render "run from 2026-05-20 10:14" rather than mixing runs. Each row carries both sides (left = prose; right = `xbrl` or `prose`) with byte offsets and quotes. Lifecycle column (`open | resolved | dismissed`) starts at `open` and is reserved for Phase 11 polish when a workflow actually surfaces a resolve action. Right-side `right_fact_id` is a plain uuid (not FK) deliberately because the engine should outlive any single `edgar_facts` row — refreshed XBRL ingests would otherwise cascade-delete historical findings.
+
+5. **Cross-doc comparison included this phase.** User explicitly asked for cross-doc, not just intra-doc. The runner enumerates sibling documents within the same project (capped at 20), extracts fact-tuples from each, and runs `compareToProse` between the target and each sibling. This is potentially expensive on large projects, so the cap is conservative; Phase 10 finance workflows will introduce concept-specific cross-doc checks that target only a few sibling docs.
+
+6. **Audit log extended with `consistency_check` event type.** Schema and `audit_log.event_type` CHECK constraint were updated in the new migration. The route writes one audit row per run with `routing_policy_applied` carrying `{run_id, findings_total, findings_inserted, cross_doc}` — re-using an existing jsonb column instead of adding a new one because the field already serves as a per-event metadata bag. The `audit.ts` GET filter set was widened to accept the new event type for forensic queries.
+
+7. **UI: minimal `FindingsPanel` in `DocPanel`, hidden behind a toggle.** New "Consistency" button next to the Download button in the document header expands a panel that calls `POST /consistency/check` and renders the resulting findings as side-by-side prose/XBRL cards. No severity filtering, no resolve/dismiss controls, no run history — those land in Phase 11 polish when a real finance workflow consumes findings. Clicking a card calls `onJumpToCitation` so the parent can swap into citation mode; the parent wiring isn't connected yet (no caller of `DocPanel` passes a handler today), so click-to-cite is plumbed but inert this phase. The button only renders in `document` mode — a citation or tracked-change header would clash with it visually.
+
+8. **What's explicitly NOT in this phase:** LLM consumption of findings (no `run_consistency_check` tool yet — Phase 10 finance workflows will add one if needed); per-finding resolve/dismiss UI; run history; severity filtering; concept anchor configuration (the anchor list is hardcoded in `factTuples.ts`); cross-project comparison (sibling lookup is project-scoped only); textual fact comparison (only numeric values are compared today).
+
+**Verification:** backend `tsc --noEmit` clean; frontend `tsc --noEmit` clean; backend Vitest 125/125 passing (41 new: 11 numbers, 9 periods, 7 entities, 6 factTuples, 8 consistency compare).
+
 ## 2026-05-20 — Phase 7: Connector framework + EDGAR (Tier 1 reference)
 
 **Scope changes vs. the original plan:**

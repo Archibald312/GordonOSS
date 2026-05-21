@@ -26,7 +26,7 @@ For any new feature, ask first: where is the LLM actually needed? Then minimize 
 - Narrative report generation on top of structured ground truth
 - Open-ended Q&A and freeform chat
 
-**Code organization rule:** deterministic extractors live under `backend/src/lib/extractors/` (born in Phase 9 when first consumed). LLM tools in `backend/src/lib/tools/` *consume* extractor output — they don't re-do the extraction work. Extractors are side-effect-free pure code with heavy unit coverage.
+**Code organization rule:** deterministic extractors live under `backend/src/lib/extractors/` (xlsx/csv born in Phase 5; numbers/periods/entities/factTuples added in Phase 8). Cross-doc consistency comparison lives under `backend/src/lib/consistency/` (`compare` = pure functions, `persist` = DB writes, `run` = orchestrator). LLM tools in `backend/src/lib/tools/` *consume* extractor output — they don't re-do the extraction work. Extractors are side-effect-free pure code with heavy unit coverage.
 
 **Anti-pattern:** "If all you have is a hammer, everything looks like a nail." LLM-everything is fast to prototype but loses on cost, latency, auditability, and air-gap suitability. Hebbia and Rogo are LLM-native for extraction; that's a vulnerability we exploit, not copy.
 

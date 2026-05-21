@@ -393,7 +393,8 @@ create table if not exists public.audit_log (
     'tool_call',
     'connector_fetch',
     'document_upload',
-    'document_download'
+    'document_download',
+    'consistency_check'
   )),
   model text,
   provider text,
@@ -439,3 +440,57 @@ create trigger audit_log_no_delete before delete on public.audit_log
   for each row execute procedure public.prevent_audit_log_modification();
 
 revoke all on public.audit_log from anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Consistency findings (Phase 8)
+-- ---------------------------------------------------------------------------
+--
+-- Deterministic cross-doc / prose-vs-XBRL fact comparison results.
+-- See backend/migrations/consistency_findings_phase8.sql for the canonical
+-- migration and rationale. No LLM writes here.
+
+create table if not exists public.consistency_findings (
+  id uuid primary key default gen_random_uuid(),
+  run_id uuid not null,
+  user_id text not null,
+  project_id uuid references public.projects(id) on delete cascade,
+  severity text not null check (severity in ('mismatch', 'unit_drift', 'orphan')),
+  entity text,
+  concept text not null,
+  period_key text not null,
+  left_document_id uuid not null references public.documents(id) on delete cascade,
+  left_value_numeric numeric,
+  left_value_text text,
+  left_unit text,
+  left_byte_offset integer,
+  left_byte_length integer,
+  left_quote text,
+  right_kind text not null check (right_kind in ('xbrl', 'prose')),
+  right_document_id uuid references public.documents(id) on delete cascade,
+  right_fact_id uuid,
+  right_value_numeric numeric,
+  right_value_text text,
+  right_unit text,
+  right_byte_offset integer,
+  right_byte_length integer,
+  right_quote text,
+  details jsonb,
+  status text not null default 'open'
+    check (status in ('open', 'resolved', 'dismissed')),
+  created_at timestamptz not null default now(),
+  resolved_at timestamptz
+);
+
+create index if not exists idx_consistency_findings_run
+  on public.consistency_findings(run_id);
+
+create index if not exists idx_consistency_findings_project_status
+  on public.consistency_findings(project_id, status)
+  where project_id is not null;
+
+create index if not exists idx_consistency_findings_left_doc
+  on public.consistency_findings(left_document_id);
+
+create index if not exists idx_consistency_findings_right_doc
+  on public.consistency_findings(right_document_id)
+  where right_document_id is not null;

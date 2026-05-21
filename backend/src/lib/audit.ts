@@ -6,7 +6,8 @@ export type AuditEventType =
     | "tool_call"
     | "connector_fetch"
     | "document_upload"
-    | "document_download";
+    | "document_download"
+    | "consistency_check";
 
 export type AuditStatus = "success" | "error" | "blocked";
 

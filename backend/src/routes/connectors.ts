@@ -185,6 +185,10 @@ connectorsRouter.post("/edgar/ingest", requireAuth, async (req, res) => {
                     typeof body.ticker === "string" ? body.ticker : null,
                 includeExhibits: Boolean(body.include_exhibits),
                 extractXbrl: Boolean(body.extract_xbrl),
+                primaryDocument:
+                    typeof body.primary_document === "string"
+                        ? body.primary_document
+                        : undefined,
             },
         });
 

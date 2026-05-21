@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { applyOptimisticResolution } from "../assistant/EditCard";
 import { DocView } from "./DocView";
 import { DocxView } from "./DocxView";
 import { XlsxView } from "./XlsxView";
+import { FindingsPanel } from "./FindingsPanel";
 import {
     displayCitationQuote,
     expandCitationToEntries,
@@ -107,6 +108,7 @@ export function DocPanel({
     // only lives in DocxView, which is fine because edits are DOCX-only.
     const useDocxView = isDocxFilename(filename);
     const xlsxKind = spreadsheetExt(filename);
+    const [showFindings, setShowFindings] = useState(false);
 
     const quotes: CitationQuote[] | undefined = useMemo(() => {
         if (mode.kind !== "citation") return undefined;
@@ -154,6 +156,15 @@ export function DocPanel({
                             </span>
                         )}
                     </div>
+                    <button
+                        type="button"
+                        onClick={() => setShowFindings((v) => !v)}
+                        title="Run cross-doc consistency check"
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                    >
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Consistency
+                    </button>
                     <DownloadButton
                         documentId={documentId}
                         versionId={versionId}
@@ -162,6 +173,12 @@ export function DocPanel({
                     />
                 </div>
             )}
+
+            {showFindings && mode.kind === "document" ? (
+                <div className="mb-2">
+                    <FindingsPanel documentId={documentId} crossDoc />
+                </div>
+            ) : null}
 
             {xlsxKind ? (
                 <XlsxView

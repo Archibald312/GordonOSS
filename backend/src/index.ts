@@ -14,6 +14,7 @@ import { userRouter } from "./routes/user";
 import { downloadsRouter } from "./routes/downloads";
 import { auditRouter } from "./routes/audit";
 import { connectorsRouter } from "./routes/connectors";
+import { consistencyRouter } from "./routes/consistency";
 
 try {
   encryptionKey();
@@ -119,6 +120,7 @@ app.post("/single-documents", uploadLimiter);
 app.post("/single-documents/:documentId/versions", uploadLimiter);
 app.post("/projects/:projectId/documents", uploadLimiter);
 app.post("/connectors/edgar/ingest", uploadLimiter);
+app.post("/consistency/check", uploadLimiter);
 
 app.use("/chat", chatRouter);
 app.use("/projects", projectsRouter);
@@ -131,6 +133,7 @@ app.use("/users", userRouter);
 app.use("/download", downloadsRouter);
 app.use("/audit-log", auditRouter);
 app.use("/connectors", connectorsRouter);
+app.use("/consistency", consistencyRouter);
 
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
