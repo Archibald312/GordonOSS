@@ -61,6 +61,25 @@ describe("buildFactTuples", () => {
         expect(ni?.valueNumeric).toBe(200_000_000);
     });
 
+    it("rejects table-row matches with too many intervening numbers", () => {
+        // A line that looks like a smushed table row from PDF extraction.
+        // Net income is sandwiched between adjacent column values; the
+        // sentence-guard should drop this rather than mis-attribute one.
+        const src =
+            "For FY2024, 39 129 25,126 (1) 25,125 Net income — — — 2,181";
+        const tuples = buildFactTuples(src);
+        expect(tuples).toEqual([]);
+    });
+
+    it("rejects matches that cross a newline boundary", () => {
+        const src = "Revenue $4.2 million\nNet income for FY2024 was reported.";
+        const tuples = buildFactTuples(src);
+        // The number "$4.2 million" sits on a different line than "Net income"
+        // so it must not be attributed to NetIncomeLoss.
+        const ni = tuples.find((t) => t.concept === "us-gaap:NetIncomeLoss");
+        expect(ni).toBeUndefined();
+    });
+
     it("citation quote contains both the concept and the value", () => {
         const src = "EBITDA for FY2024 totaled $50 million.";
         const tuples = buildFactTuples(src);

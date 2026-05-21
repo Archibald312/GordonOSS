@@ -32,13 +32,27 @@ consistencyRouter.post("/check", requireAuth, async (req, res) => {
         return void res.status(400).json({ detail: "document_id is required" });
     }
     const db = createServerSupabase();
-    const { data: docRow } = await db
+    const { data: docRow, error: lookupErr } = await db
         .from("documents")
         .select("user_id, project_id")
         .eq("id", documentId)
-        .single();
+        .maybeSingle();
+    if (lookupErr) {
+        console.error(
+            `[consistency/check] lookup error for documentId=${documentId}:`,
+            lookupErr,
+        );
+        return void res
+            .status(500)
+            .json({ detail: `Document lookup failed: ${lookupErr.message}` });
+    }
     if (!docRow) {
-        return void res.status(404).json({ detail: "Document not found" });
+        console.warn(
+            `[consistency/check] no documents row for id=${documentId} (user=${userId})`,
+        );
+        return void res
+            .status(404)
+            .json({ detail: `Document ${documentId} not found in database` });
     }
     const access = await ensureDocAccess(
         docRow as { user_id: string; project_id: string | null },
@@ -47,7 +61,12 @@ consistencyRouter.post("/check", requireAuth, async (req, res) => {
         db,
     );
     if (!access.ok) {
-        return void res.status(404).json({ detail: "Document not found" });
+        console.warn(
+            `[consistency/check] access denied: documentId=${documentId} doc.user_id=${(docRow as { user_id: string }).user_id} caller=${userId}`,
+        );
+        return void res.status(403).json({
+            detail: "You do not have access to this document",
+        });
     }
 
     const started = Date.now();

@@ -16,10 +16,12 @@ import {
     FileText,
     Loader2,
     Plus,
+    ShieldCheck,
     Trash2,
     Upload,
     X,
 } from "lucide-react";
+import { FindingsPanel } from "@/app/components/shared/FindingsPanel";
 import {
     deleteChat,
     deleteDocument,
@@ -225,6 +227,7 @@ export default function ProjectAssistantChatPage({ params }: Props) {
     const [explorerWidth, setExplorerWidth] = useState(EXPLORER_DEFAULT);
     const [chatWidth, setChatWidth] = useState(CHAT_DEFAULT);
     const [explorerCollapsed, setExplorerCollapsed] = useState(false);
+    const [showFindings, setShowFindings] = useState(false);
 
     // Upload state
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1060,6 +1063,51 @@ export default function ProjectAssistantChatPage({ params }: Props) {
                             })
                         )}
                     </div>
+                    {activeTab ? (
+                        <div className="shrink-0 flex items-center justify-end gap-2 border-b border-gray-200 bg-gray-50 px-3 py-1">
+                            <button
+                                type="button"
+                                onClick={() => setShowFindings((v) => !v)}
+                                title="Run cross-doc consistency check"
+                                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium shadow-sm ${
+                                    showFindings
+                                        ? "border-blue-300 bg-blue-50 text-blue-700"
+                                        : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                                }`}
+                            >
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                                Consistency
+                            </button>
+                        </div>
+                    ) : null}
+                    {showFindings && activeTab ? (
+                        <div className="shrink-0 max-h-[40%] overflow-y-auto border-b border-gray-200 bg-white px-3 py-2">
+                            <FindingsPanel
+                                key={activeTab.documentId}
+                                documentId={activeTab.documentId}
+                                crossDoc
+                                onJumpToCitation={(args) => {
+                                    // Resolve filename from the loaded project's docs.
+                                    const doc = (project?.documents ?? []).find(
+                                        (d) => d.id === args.documentId,
+                                    );
+                                    if (!doc) return;
+                                    // We don't have a page number from the
+                                    // finding (byte offsets only) — pass page:1
+                                    // and let the viewer's text-search match
+                                    // the quote. Trim to a short anchor so
+                                    // long table-row quotes still find a hit.
+                                    const anchor = args.quote
+                                        .replace(/\s+/g, " ")
+                                        .trim()
+                                        .slice(0, 120);
+                                    openTab(args.documentId, doc.filename, [
+                                        { page: 1, quote: anchor },
+                                    ]);
+                                }}
+                            />
+                        </div>
+                    ) : null}
                     <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
                         {activeTab ? (
                             spreadsheetTabKind(activeTab.filename) ? (

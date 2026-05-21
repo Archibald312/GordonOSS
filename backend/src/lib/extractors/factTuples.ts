@@ -99,14 +99,22 @@ const CONCEPT_ANCHORS: Array<{
 ];
 
 // Within this many characters of a concept anchor, a number is considered
-// the value of that fact. 120 covers "Revenue was $4.2 million" through
-// "Revenue for the quarter ... totaled $4.2 million" without picking up
-// adjacent unrelated values.
-const VALUE_WINDOW_CHARS = 120;
+// the value of that fact. 80 covers "Revenue was $4.2 million" through
+// "Revenue for the quarter totaled $4.2 million" without picking up
+// adjacent unrelated values. Phase 8 retuned down from 120 after we saw
+// table-row false positives where columns smushed into one PDF text line.
+const VALUE_WINDOW_CHARS = 80;
 // Periods can sit further from the anchor — "for FY2024, revenue was..."
 // — so we widen the window. Still bounded to avoid sentence-spanning grabs.
 const PERIOD_WINDOW_CHARS = 200;
 const ENTITY_WINDOW_CHARS = 500;
+// Tabular guard: when a PDF table row gets extracted as a single line, the
+// concept anchor ("Net income") sits next to many adjacent column values.
+// Picking the literal "nearest" number then attributes column-1 numbers to
+// the row label. If this many *other* extracted numbers sit between the
+// anchor and the chosen candidate, the candidate is probably from a
+// different column and we drop the tuple.
+const MAX_INTERVENING_NUMBERS = 0;
 
 function nearest<T extends { offset: number; length: number }>(
     target: number,
@@ -129,6 +137,50 @@ function nearest<T extends { offset: number; length: number }>(
         }
     }
     return best;
+}
+
+/**
+ * Reject the (anchor, candidate-number) pair if the gap between them looks
+ * like a table row rather than a sentence:
+ *   - a newline character indicates a column / row break
+ *   - more than MAX_INTERVENING_NUMBERS other numeric tokens between the
+ *     anchor's center and the candidate's span suggests the candidate is
+ *     from a different column in the same row
+ *
+ * Returns true if the pair is plausible (sentence-like proximity).
+ */
+// Matches "table-row shaped" numeric tokens — comma-grouped thousands or
+// values with a decimal. Deliberately excludes plain 1-4 digit integers
+// because those false-positive on years (FY2024 ⇒ "2024") and on small
+// counts ("note 5", "page 12"). Currency parens-negatives like "(1,234)"
+// are matched via the comma-grouped variant.
+const ANY_NUMBER_TOKEN = /-?\d{1,3}(?:,\d{3})+(?:\.\d+)?|-?\d+\.\d+/g;
+
+function passesSentenceGuard(
+    source: string,
+    anchorCenter: number,
+    candidate: { offset: number; length: number },
+    _allNumbers: Array<{ offset: number; length: number }>,
+): boolean {
+    const lo = Math.min(anchorCenter, candidate.offset);
+    const hi = Math.max(anchorCenter, candidate.offset + candidate.length);
+    const between = source.slice(lo, hi);
+    if (between.includes("\n")) return false;
+    // Count number-shaped tokens that don't overlap the candidate itself.
+    const re = new RegExp(ANY_NUMBER_TOKEN.source, "g");
+    let intervening = 0;
+    let m: RegExpExecArray | null;
+    const candStartLocal = candidate.offset - lo;
+    const candEndLocal = candStartLocal + candidate.length;
+    while ((m = re.exec(between)) !== null) {
+        const start = m.index;
+        const end = start + m[0].length;
+        // Skip tokens that overlap the chosen candidate's span.
+        if (start < candEndLocal && end > candStartLocal) continue;
+        intervening++;
+        if (intervening > MAX_INTERVENING_NUMBERS) return false;
+    }
+    return true;
 }
 
 function unitFor(num: NumberMatch): string | null {
@@ -174,6 +226,7 @@ export function buildFactTuples(
             const center = anchorOffset + anchorLen / 2;
             const num = nearest(center, numbers, VALUE_WINDOW_CHARS);
             if (!num) continue;
+            if (!passesSentenceGuard(source, center, num, numbers)) continue;
             const per = nearest(center, periods, PERIOD_WINDOW_CHARS);
             if (!per) continue;
             const ent = nearest(center, entities, ENTITY_WINDOW_CHARS);
